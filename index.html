@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagIn - Mass ID Card Generator</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' } }
+                }
+            }
+        }
+    </script>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <!-- Library AI Background Removal -->
+    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/imgly-background-removal.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { background-color: #f8fafc; }
+        .canvas-container { margin: 0 auto; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); border-radius: 0.5rem; overflow: hidden;}
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .floating-toolbar {
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .floating-toolbar.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0 z-10 relative">
+        <div class="flex items-center gap-3">
+            <div class="bg-brand-600 text-white p-2 rounded-lg shadow-sm">
+                <i data-lucide="badge-check" class="w-6 h-6"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">TagIn</h1>
+        </div>
+        <div class="flex items-center gap-4 text-sm font-medium text-slate-500">
+            
+            <!-- Tombol Admin -->
+            <button id="btnOpenAdminAuth" class="text-xs font-semibold text-slate-500 hover:text-brand-600 px-3 py-1.5 rounded-full hover:bg-slate-100 transition-colors flex items-center gap-1.5">
+                <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Dashboard Admin
+            </button>
+
+            <div class="w-px h-6 bg-slate-200 mx-1"></div>
+
+            <!-- Cloud Sync Indicator -->
+            <div id="cloudStatus" class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200" title="Status Sinkronisasi Layout">
+                <i data-lucide="loader-2" class="w-4 h-4 text-slate-400 animate-spin"></i>
+                <span class="text-xs font-semibold text-slate-600 hidden sm:inline">Menghubungkan...</span>
+            </div>
+
+            <!-- User Auth Container -->
+            <div id="authContainer" class="flex items-center gap-2">
+                <button id="btnLoginGoogle" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
+                    <span class="hidden sm:inline">Login Google</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Layout -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-[400px] bg-white border-r border-slate-200 flex flex-col h-full overflow-y-auto shrink-0 scrollbar-hide">
+            <div class="p-6 space-y-8">
+                
+                <!-- Step 1: Upload Template -->
+                <section>
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                        Template ID Card
+                    </h2>
+                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
+                            <i data-lucide="image-plus" class="w-8 h-8 mb-2 text-slate-400"></i>
+                            <p class="text-sm font-semibold">Klik untuk upload template</p>
+                            <p class="text-xs text-slate-400 mt-1">PNG atau JPG (Disarankan resolusi tinggi)</p>
+                        </div>
+                        <input id="templateUpload" type="file" class="hidden" accept="image/png, image/jpeg" />
+                    </label>
+                </section>
+
+                <!-- Step 2: Konfigurasi Field -->
+                <section id="configSection" class="opacity-50 pointer-events-none transition-opacity">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                        Konfigurasi Layout
+                    </h2>
+                    
+                    <div class="bg-brand-50 border border-brand-200 rounded-xl p-4 text-sm text-brand-800 mb-4">
+                        <div class="flex items-start gap-3">
+                            <div class="p-2 bg-brand-100 rounded-lg shrink-0">
+                                <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-brand-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold mb-1">Editor Visual Aktif!</p>
+                                <p class="text-xs text-brand-700 leading-relaxed">
+                                    Klik elemen (Teks / Foto) di layar pratinjau. Anda bisa <b>menggeser, memutar, dan mengubah ukurannya</b>. Posisi akan otomatis tersimpan ke Cloud.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Foto -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <span class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="image" class="w-4 h-4"></i> Tampilkan Foto Karyawan
+                            </span>
+                            <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" id="togglePhoto" checked class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 checked:right-0 checked:border-brand-500 transition-all duration-200"/>
+                                <label for="togglePhoto" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                            </div>
+                        </label>
+                        <style>
+                            .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+                            .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+                            .toggle-checkbox { right: 20px; z-index: 1; border-color: #cbd5e1; }
+                        </style>
+                    </div>
+                </section>
+
+                <!-- Step 3: Upload Excel -->
+                <section>
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
+                        Data Karyawan
+                    </h2>
+                        <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-brand-200 border-dashed rounded-xl cursor-pointer bg-brand-50 hover:bg-brand-100 transition mb-3">
+                        <div class="flex flex-col items-center justify-center py-4 text-brand-600">
+                            <i data-lucide="table" class="w-6 h-6 mb-2"></i>
+                            <p class="text-sm font-semibold">Upload Data Excel</p>
+                        </div>
+                        <input id="excelUpload" type="file" class="hidden" accept=".xlsx, .xls, .xlsb, .csv" />
+                    </label>
+                </section>
+
+                <!-- Step 4: Upload Foto -->
+                <section id="fotoSection" class="opacity-50 pointer-events-none transition-opacity">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
+                        Upload Foto (Masal)
+                    </h2>
+                    <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition mb-3">
+                        <div class="flex flex-col items-center justify-center py-4 text-slate-500">
+                            <i data-lucide="images" class="w-6 h-6 mb-2"></i>
+                            <p class="text-sm font-semibold text-center px-2">Pilih Banyak Foto Sekaligus</p>
+                        </div>
+                        <input id="photoUpload" type="file" class="hidden" accept="image/png, image/jpeg" multiple />
+                    </label>
+                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 items-start">
+                        <i data-lucide="info" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0"></i>
+                        <p class="text-xs text-blue-800">Nama file foto <b>WAJIB SAMA</b> dengan NIK. <br><i>Contoh: 80115275.jpg</i></p>
+                    </div>
+                </section>
+
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
+            
+            <!-- Canvas Preview Container -->
+            <div class="flex-1 overflow-auto p-8 flex flex-col items-center justify-start border-b border-slate-200 relative">
+                
+                <!-- Floating Formatting Toolbar -->
+                <div id="floatingToolbar" class="floating-toolbar absolute top-6 z-50 bg-white shadow-xl border border-slate-200 rounded-full px-5 py-2.5 flex items-center gap-4">
+                    
+                    <!-- Toolbar Teks -->
+                    <div id="textTools" class="flex items-center gap-4 hidden">
+                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
+                            <input type="color" id="toolColor" class="w-7 h-7 rounded-full cursor-pointer border-0 p-0 bg-transparent overflow-hidden" title="Warna Teks">
+                        </div>
+                        <div class="flex items-center gap-1 border-r border-slate-200 pr-4">
+                            <button id="toolSizeDec" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                            <input type="number" id="toolSize" class="w-12 text-center text-sm font-medium focus:outline-none focus:text-brand-600" title="Ukuran Font">
+                            <button id="toolSizeInc" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="flex items-center gap-1 border-r border-slate-200 pr-4">
+                            <button id="toolBold" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Tebal"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="toolAlignLeft" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kiri"><i data-lucide="align-left" class="w-4 h-4"></i></button>
+                            <button id="toolAlignCenter" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Tengah"><i data-lucide="align-center" class="w-4 h-4"></i></button>
+                            <button id="toolAlignRight" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kanan"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Toolbar Foto / Image -->
+                    <div id="photoTools" class="flex items-center gap-4 text-sm px-2 hidden">
+                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
+                            <i data-lucide="sun" class="w-4 h-4 text-slate-500" title="Kecerahan"></i>
+                            <input type="range" id="toolBrightness" min="-1" max="1" step="0.05" value="0" class="w-24 accent-brand-500">
+                        </div>
+                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
+                            <i data-lucide="contrast" class="w-4 h-4 text-slate-500" title="Kontras"></i>
+                            <input type="range" id="toolContrast" min="-1" max="1" step="0.05" value="0" class="w-24 accent-brand-500">
+                        </div>
+                        <button id="btnRemoveBg" class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-medium text-xs shadow-sm transition-all" title="Hapus Background Menggunakan AI">
+                            <i data-lucide="wand-2" class="w-3.5 h-3.5"></i> Hapus BG (AI)
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Empty State -->
+                <div id="canvasEmptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                    <i data-lucide="monitor-stop" class="w-16 h-16 mb-4 text-slate-300"></i>
+                    <p class="text-lg font-medium text-slate-500">Pratinjau ID Card akan muncul di sini</p>
+                    <p class="text-sm mt-1">Mulai dengan mengunggah template di panel sebelah kiri.</p>
+                </div>
+
+                <div id="canvasWrapper" class="hidden pt-14">
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Data Table & Action Area -->
+            <div class="h-64 bg-white flex flex-col shrink-0">
+                <div class="flex justify-between items-center px-6 py-3 border-b border-slate-200 bg-slate-50">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-slate-500"></i>
+                        Pratinjau Data <span id="dataCount" class="text-xs font-normal bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full ml-1">0 Data</span>
+                    </h3>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden md:block">
+                            <p class="text-xs font-semibold text-slate-700">Format Output</p>
+                            <p class="text-[10px] text-slate-500">A4 Landscape • 10 ID/Lembar (5x8cm)</p>
+                        </div>
+                        <button id="btnGenerate" disabled class="bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm">
+                            <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                            Generate PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-white sticky top-0 border-b border-slate-200 shadow-sm z-10">
+                            <tr>
+                                <th class="px-6 py-3 font-semibold text-slate-900 w-16">No</th>
+                                <th class="px-6 py-3 font-semibold text-slate-900">NIK</th>
+                                <th class="px-6 py-3 font-semibold text-slate-900">Nama Karyawan</th>
+                                <th class="px-6 py-3 font-semibold text-slate-900">Departemen</th>
+                                <th class="px-6 py-3 font-semibold text-slate-900">Foto</th>
+                                <th class="px-6 py-3 font-semibold text-slate-900 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-slate-400 bg-slate-50/50">
+                                    Belum ada data Excel yang diunggah.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
+                <i data-lucide="loader-2" class="w-10 h-10 text-brand-600 animate-spin mb-4"></i>
+                <h3 class="text-lg font-bold text-slate-900 mb-1" id="loadingTitle">Memproses...</h3>
+                <p class="text-sm text-slate-500 text-center max-w-sm" id="loadingText">Mohon tunggu sebentar.</p>
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- Modal Form Login Admin & Dashboard Modal -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
+            <div class="p-6 text-center border-b border-slate-100">
+                <div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="lock" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900">Otorisasi Admin</h3>
+            </div>
+            <div class="p-6">
+                <input type="password" id="inputAdminPassword" placeholder="Kata sandi..." class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition-all mb-4 text-center tracking-widest font-mono">
+                <p id="errorAdminPass" class="text-xs text-red-500 text-center mb-4 hidden">Kata sandi salah!</p>
+                <div class="flex gap-3">
+                    <button id="btnCancelAdminAuth" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors">Batal</button>
+                    <button id="btnSubmitAdminAuth" class="flex-1 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors">Masuk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="adminDashboardModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="bg-brand-600 text-white p-2 rounded-lg">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">Dashboard Statistik</h2>
+                        <p class="text-xs text-slate-500" id="adminLastUpdate">Live update dari Cloud Database</p>
+                    </div>
+                </div>
+                <button id="btnCloseAdminDash" class="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-8 overflow-y-auto bg-white">
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="bg-brand-50 rounded-2xl p-6 border border-brand-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                        <p class="text-sm font-semibold text-brand-700 uppercase tracking-wider mb-2 relative z-10">Total ID Card Di-generate</p>
+                        <p id="statTotalGenerated" class="text-5xl font-extrabold text-brand-900 relative z-10">0</p>
+                    </div>
+                    <div class="bg-green-50 rounded-2xl p-6 border border-green-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                        <p class="text-sm font-semibold text-green-700 uppercase tracking-wider mb-2 relative z-10">Total Pengguna Aktif</p>
+                        <p id="statTotalUsers" class="text-5xl font-extrabold text-green-900 relative z-10">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase System Module -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, increment, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Application State
+        window.state = {
+            templateImage: null,
+            imageWidth: 0,
+            imageHeight: 0,
+            excelData: [],
+            photos: {},
+            photosOriginal: {}, 
+            currentPreviewIndex: 0,
+            cloudConfigLoaded: false,
+            previewData: {
+                nik: "80115275",
+                nama: "M ALGIFARI",
+                departemen: "SECURITY MANAGEMENT & EXTERNAL",
+                tanggalJoin: "16 Feb 2026"
+            },
+            fields: {
+                nama: { label: 'Nama Karyawan', x: 80, y: 450, size: 28, color: '#0f172a', weight: 'bold', align: 'left', angle: 0 },
+                departemen: { label: 'Departemen', x: 80, y: 490, size: 18, color: '#0f172a', weight: 'bold', align: 'left', angle: 0 },
+                nik: { label: 'NIK Karyawan', x: 80, y: 530, size: 20, color: '#0f172a', weight: 'bold', align: 'left', angle: 0 },
+                tanggalJoin: { label: 'Tanggal Join', x: 80, y: 570, size: 20, color: '#0f172a', weight: 'bold', align: 'left', angle: 0 }
+            },
+            photoConfig: {
+                show: true,
+                x: 80,
+                y: 200,
+                width: 160,
+                height: 220,
+                angle: 0,
+                brightness: 0,
+                contrast: 0
+            }
+        };
+
+        // DOM Elements
+        window.els = {
+            templateUpload: document.getElementById('templateUpload'),
+            excelUpload: document.getElementById('excelUpload'),
+            photoUpload: document.getElementById('photoUpload'),
+            canvasWrapper: document.getElementById('canvasWrapper'),
+            canvasEmptyState: document.getElementById('canvasEmptyState'),
+            configSection: document.getElementById('configSection'),
+            fotoSection: document.getElementById('fotoSection'),
+            dataTableBody: document.getElementById('dataTableBody'),
+            dataCount: document.getElementById('dataCount'),
+            btnGenerate: document.getElementById('btnGenerate'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            loadingTitle: document.getElementById('loadingTitle'),
+            loadingText: document.getElementById('loadingText'),
+            toolbar: document.getElementById('floatingToolbar'),
+            textTools: document.getElementById('textTools'),
+            photoTools: document.getElementById('photoTools'),
+            
+            toolColor: document.getElementById('toolColor'),
+            toolSize: document.getElementById('toolSize'),
+            toolSizeDec: document.getElementById('toolSizeDec'),
+            toolSizeInc: document.getElementById('toolSizeInc'),
+            toolBold: document.getElementById('toolBold'),
+            toolAlignLeft: document.getElementById('toolAlignLeft'),
+            toolAlignCenter: document.getElementById('toolAlignCenter'),
+            toolAlignRight: document.getElementById('toolAlignRight'),
+            
+            toolBrightness: document.getElementById('toolBrightness'),
+            toolContrast: document.getElementById('toolContrast'),
+            btnRemoveBg: document.getElementById('btnRemoveBg'),
+            togglePhoto: document.getElementById('togglePhoto'),
+            
+            cloudStatus: document.getElementById('cloudStatus'),
+            authContainer: document.getElementById('authContainer'),
+            btnLoginGoogle: document.getElementById('btnLoginGoogle'),
+            btnOpenAdminAuth: document.getElementById('btnOpenAdminAuth'),
+            
+            adminAuthModal: document.getElementById('adminAuthModal'),
+            inputAdminPassword: document.getElementById('inputAdminPassword'),
+            btnSubmitAdminAuth: document.getElementById('btnSubmitAdminAuth'),
+            btnCancelAdminAuth: document.getElementById('btnCancelAdminAuth'),
+            errorAdminPass: document.getElementById('errorAdminPass'),
+            adminDashboardModal: document.getElementById('adminDashboardModal'),
+            btnCloseAdminDash: document.getElementById('btnCloseAdminDash'),
+            statTotalGenerated: document.getElementById('statTotalGenerated'),
+            statTotalUsers: document.getElementById('statTotalUsers'),
+            adminLastUpdate: document.getElementById('adminLastUpdate')
+        };
+
+        window.fCanvas = null; 
+        let currentUser = null;
+        let unsubscribeAdminStats = null;
+
+        // Firebase Initialization
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                trackUserVisit();
+            } catch (e) {
+                setCloudStatus('error', 'Cloud Offline');
+            }
+        }
+
+        els.btnLoginGoogle.addEventListener('click', async () => {
+            if (currentUser && !currentUser.isAnonymous) {
+                await signOut(auth);
+                await signInAnonymously(auth);
+                return;
+            }
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch (error) { alert("Login Google dibatalkan."); }
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            if (user) {
+                setCloudStatus('success', 'Tersinkronisasi');
+                if (!user.isAnonymous) {
+                    const photoUrl = user.photoURL || 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+                    const displayName = user.displayName ? user.displayName.split(" ")[0] : 'User';
+                    els.authContainer.innerHTML = `
+                        <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-1 pr-3 py-1 border border-slate-200">
+                            <img src="${photoUrl}" class="w-6 h-6 rounded-full border border-white shadow-sm" alt="Avatar">
+                            <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Hai, ${displayName}</span>
+                        </div>
+                        <button id="btnLogout" class="text-xs font-medium text-slate-500 hover:text-red-500 ml-2 transition-colors">Logout</button>
+                    `;
+                    document.getElementById('btnLogout').addEventListener('click', async () => {
+                        await signOut(auth);
+                        await signInAnonymously(auth);
+                    });
+                } else {
+                    els.authContainer.innerHTML = `
+                        <button id="btnLoginGoogleRe" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
+                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
+                            <span class="hidden sm:inline">Login Google</span>
+                        </button>
+                    `;
+                    document.getElementById('btnLoginGoogleRe').addEventListener('click', async () => {
+                        try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) {}
+                    });
+                }
+                await loadConfigFromCloud();
+            }
+        });
+
+        function setCloudStatus(type, message) {
+            if(type === 'loading') els.cloudStatus.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 text-brand-500 animate-spin"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
+            else if(type === 'success') els.cloudStatus.innerHTML = `<i data-lucide="cloud-check" class="w-4 h-4 text-green-500"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
+            else if(type === 'error') els.cloudStatus.innerHTML = `<i data-lucide="cloud-off" class="w-4 h-4 text-red-500"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
+            lucide.createIcons();
+        }
+
+        async function trackGenerationStats(count) {
+            if (!currentUser) return;
+            try {
+                const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
+                await setDoc(statsRef, { totalGenerated: increment(count), lastActive: new Date().toISOString() }, { merge: true });
+            } catch (e) {}
+        }
+
+        async function trackUserVisit() {
+            if (!currentUser || localStorage.getItem('tagin_user_tracked_session')) return;
+            try {
+                const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
+                await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
+                localStorage.setItem('tagin_user_tracked_session', 'true');
+            } catch(e) {}
+        }
+
+        // --- Admin Dashboard logic ---
+        els.btnOpenAdminAuth.addEventListener('click', () => { els.inputAdminPassword.value = ''; els.errorAdminPass.classList.add('hidden'); els.adminAuthModal.classList.remove('hidden'); });
+        els.btnCancelAdminAuth.addEventListener('click', () => els.adminAuthModal.classList.add('hidden'));
+        els.btnSubmitAdminAuth.addEventListener('click', () => {
+            if (els.inputAdminPassword.value === 'admin123') { els.adminAuthModal.classList.add('hidden'); openAdminDashboard(); } else els.errorAdminPass.classList.remove('hidden');
+        });
+        function openAdminDashboard() {
+            if (!currentUser) return;
+            els.adminDashboardModal.classList.remove('hidden');
+            const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
+            unsubscribeAdminStats = onSnapshot(statsRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    els.statTotalGenerated.textContent = (data.totalGenerated || 0).toLocaleString('id-ID');
+                    els.statTotalUsers.textContent = (data.totalUsers || 0).toLocaleString('id-ID');
+                    els.adminLastUpdate.textContent = `Live update terakhir: ${new Date().toLocaleTimeString('id-ID')}`;
+                }
+            });
+        }
+        els.btnCloseAdminDash.addEventListener('click', () => { els.adminDashboardModal.classList.add('hidden'); if(unsubscribeAdminStats) unsubscribeAdminStats(); });
+
+        // --- Cloud Config ---
+        async function loadConfigFromCloud() {
+            if (!currentUser) return;
+            try {
+                const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
+                const docSnap = await getDoc(layoutRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
+                    if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
+                    window.state.cloudConfigLoaded = true;
+                    els.togglePhoto.checked = window.state.photoConfig.show;
+                    els.toolBrightness.value = window.state.photoConfig.brightness || 0;
+                    els.toolContrast.value = window.state.photoConfig.contrast || 0;
+                    if(window.fCanvas) renderFabricObjects();
+                }
+            } catch (e) {}
+        }
+        async function saveConfigToCloud() {
+            if (!currentUser) return;
+            try {
+                setCloudStatus('loading', 'Menyimpan...');
+                const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
+                await setDoc(layoutRef, { fields: window.state.fields, photoConfig: window.state.photoConfig, updatedAt: new Date().toISOString() });
+                setTimeout(() => setCloudStatus('success', 'Tersimpan'), 500); 
+            } catch (e) { setCloudStatus('error', 'Gagal Simpan'); }
+        }
+
+        // --- Core Application & Fabric ---
+        function init() {
+            lucide.createIcons();
+            initAuth();
+            setupEventListeners();
+        }
+
+        function initFabricCanvas() {
+            if (window.fCanvas) window.fCanvas.dispose();
+            window.fCanvas = new fabric.Canvas('previewCanvas', { width: window.state.imageWidth, height: window.state.imageHeight, preserveObjectStacking: true, selection: false });
+            fabric.Object.prototype.transparentCorners = false; fabric.Object.prototype.cornerColor = '#3b82f6'; fabric.Object.prototype.cornerStyle = 'circle';
+            
+            window.fCanvas.setBackgroundImage(window.state.templateImage.src, window.fCanvas.renderAll.bind(window.fCanvas), { originX: 'left', originY: 'top', width: window.fCanvas.width, height: window.fCanvas.height });
+            window.fCanvas.on('object:modified', onObjectModified);
+            window.fCanvas.on('selection:created', onObjectSelected);
+            window.fCanvas.on('selection:updated', onObjectSelected);
+            window.fCanvas.on('selection:cleared', onSelectionCleared);
+            renderFabricObjects();
+        }
+
+        // PERBAIKAN 1: Return element canvas langsung, jangan img base64 yang belum di load
+        function getPlaceholderImageElement() {
+            const oc = document.createElement('canvas'); oc.width = 300; oc.height = 400; const ctx = oc.getContext('2d');
+            ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, 300, 400); ctx.fillStyle = '#64748b'; ctx.font = 'bold 40px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('FOTO', 150, 180); ctx.font = '30px Inter'; ctx.fillText('N/A', 150, 230);
+            return oc; 
+        }
+
+        window.renderFabricObjects = function() {
+            if (!window.fCanvas) return;
+            
+            let photoObj = window.fCanvas.getObjects().find(o => o.id === 'foto');
+            
+            if (window.state.photoConfig.show) {
+                const imgEl = window.state.photos[window.state.previewData.nik] || getPlaceholderImageElement();
+                
+                // PERBAIKAN 1: Hapus photo lama jika ada, lalu render ulang agar skalanya presisi
+                if (photoObj) {
+                    window.fCanvas.remove(photoObj);
+                }
+                
+                photoObj = new fabric.Image(imgEl, {
+                    id: 'foto', originX: 'left', originY: 'top',
+                    left: window.state.photoConfig.x, top: window.state.photoConfig.y,
+                    angle: window.state.photoConfig.angle || 0,
+                });
+                
+                photoObj.scaleToWidth(window.state.photoConfig.width);
+                photoObj.scaleToHeight(window.state.photoConfig.height);
+                window.fCanvas.add(photoObj);
+                photoObj.sendToBack(); // Pastikan foto ada di belakang text
+
+                // Menerapkan Filter Foto (Brightness & Contrast)
+                photoObj.filters = [];
+                if (window.state.photoConfig.brightness) photoObj.filters.push(new fabric.Image.filters.Brightness({ brightness: window.state.photoConfig.brightness }));
+                if (window.state.photoConfig.contrast) photoObj.filters.push(new fabric.Image.filters.Contrast({ contrast: window.state.photoConfig.contrast }));
+                photoObj.applyFilters();
+                
+            } else {
+                if (photoObj) window.fCanvas.remove(photoObj);
+            }
+
+            Object.keys(window.state.fields).forEach(key => {
+                const field = window.state.fields[key];
+                const textStr = window.state.previewData[key] || '';
+                let textObj = window.fCanvas.getObjects().find(o => o.id === key);
+                const fabricAlignOrigin = field.align === 'center' ? 'center' : (field.align === 'right' ? 'right' : 'left');
+
+                if (textObj) {
+                    textObj.set({ text: textStr, originX: fabricAlignOrigin });
+                } else {
+                    const newText = new fabric.Text(textStr, {
+                        id: key, originX: fabricAlignOrigin, originY: 'center', 
+                        left: field.x, top: field.y, fontSize: field.size, fill: field.color,
+                        fontWeight: field.weight, textAlign: field.align, fontFamily: 'Inter, sans-serif', angle: field.angle || 0,
+                    });
+                    window.fCanvas.add(newText);
+                }
+            });
+
+            window.fCanvas.renderAll();
+        }
+
+        function onObjectModified(e) {
+            const obj = e.target;
+            if (obj.id === 'foto') {
+                window.state.photoConfig.x = obj.left; window.state.photoConfig.y = obj.top;
+                window.state.photoConfig.angle = obj.angle;
+                window.state.photoConfig.width = obj.width * obj.scaleX; window.state.photoConfig.height = obj.height * obj.scaleY;
+            } else if (window.state.fields[obj.id]) {
+                const field = window.state.fields[obj.id];
+                field.x = obj.left; field.y = obj.top; field.angle = obj.angle;
+                if (obj.scaleX !== 1 || obj.scaleY !== 1) {
+                    const avgScale = (obj.scaleX + obj.scaleY) / 2;
+                    const newSize = Math.round(obj.fontSize * avgScale);
+                    obj.set({ fontSize: newSize, scaleX: 1, scaleY: 1 });
+                    field.size = newSize; if(els.toolSize.value) els.toolSize.value = newSize;
+                }
+            }
+            saveConfigToCloud(); 
+        }
+
+        function onObjectSelected(e) {
+            const obj = e.selected[0];
+            els.toolbar.classList.add('active');
+
+            if (obj.id === 'foto') {
+                els.textTools.classList.add('hidden');
+                els.photoTools.classList.remove('hidden');
+                
+                els.toolBrightness.value = window.state.photoConfig.brightness || 0;
+                els.toolContrast.value = window.state.photoConfig.contrast || 0;
+            } else {
+                els.textTools.classList.remove('hidden');
+                els.photoTools.classList.add('hidden');
+                
+                const field = window.state.fields[obj.id];
+                els.toolColor.value = field.color; els.toolSize.value = field.size;
+                els.toolBold.classList.toggle('bg-slate-200', field.weight === 'bold');
+                els.toolAlignLeft.classList.toggle('bg-slate-200', field.align === 'left');
+                els.toolAlignCenter.classList.toggle('bg-slate-200', field.align === 'center');
+                els.toolAlignRight.classList.toggle('bg-slate-200', field.align === 'right');
+            }
+        }
+
+        function onSelectionCleared() { els.toolbar.classList.remove('active'); }
+
+        function updateActiveTextObj(prop, value) {
+            if (!window.fCanvas) return;
+            const obj = window.fCanvas.getActiveObject();
+            if (obj && window.state.fields[obj.id]) {
+                obj.set(prop, value);
+                const stateProp = prop === 'fill' ? 'color' : prop === 'fontWeight' ? 'weight' : prop === 'textAlign' ? 'align' : prop;
+                window.state.fields[obj.id][stateProp] = value;
+                if(prop === 'textAlign') obj.set('originX', value === 'center' ? 'center' : (value === 'right' ? 'right' : 'left'));
+                window.fCanvas.renderAll(); saveConfigToCloud();
+            }
+        }
+
+        els.toolColor.addEventListener('input', (e) => updateActiveTextObj('fill', e.target.value));
+        els.toolSize.addEventListener('change', (e) => updateActiveTextObj('fontSize', parseInt(e.target.value) || 12));
+        els.toolSizeDec.addEventListener('click', () => { let s = parseInt(els.toolSize.value); if(s > 5) { els.toolSize.value = s-1; updateActiveTextObj('fontSize', s-1); } });
+        els.toolSizeInc.addEventListener('click', () => { let s = parseInt(els.toolSize.value); els.toolSize.value = s+1; updateActiveTextObj('fontSize', s+1); });
+        els.toolBold.addEventListener('click', () => { const obj = window.fCanvas.getActiveObject(); if(obj) { const newW = obj.fontWeight === 'bold' ? 'normal' : 'bold'; els.toolBold.classList.toggle('bg-slate-200', newW === 'bold'); updateActiveTextObj('fontWeight', newW); } });
+        const applyAlign = (align) => { els.toolAlignLeft.classList.toggle('bg-slate-200', align === 'left'); els.toolAlignCenter.classList.toggle('bg-slate-200', align === 'center'); els.toolAlignRight.classList.toggle('bg-slate-200', align === 'right'); updateActiveTextObj('textAlign', align); };
+        els.toolAlignLeft.addEventListener('click', () => applyAlign('left')); els.toolAlignCenter.addEventListener('click', () => applyAlign('center')); els.toolAlignRight.addEventListener('click', () => applyAlign('right'));
+        els.togglePhoto.addEventListener('change', (e) => { window.state.photoConfig.show = e.target.checked; saveConfigToCloud(); window.renderFabricObjects(); });
+
+        
+        function applyImageFilters() {
+            window.state.photoConfig.brightness = parseFloat(els.toolBrightness.value);
+            window.state.photoConfig.contrast = parseFloat(els.toolContrast.value);
+            window.renderFabricObjects();
+            saveConfigToCloud();
+        }
+        
+        els.toolBrightness.addEventListener('input', applyImageFilters);
+        els.toolContrast.addEventListener('input', applyImageFilters);
+
+        els.btnRemoveBg.addEventListener('click', async () => {
+            const nik = window.state.previewData.nik;
+            const currentImg = window.state.photosOriginal[nik];
+            
+            if (!currentImg) {
+                alert("Tidak ada foto pada karyawan ini untuk dihapus latar belakangnya.");
+                return;
+            }
+
+            els.loadingTitle.textContent = "AI Memproses Foto...";
+            els.loadingText.innerHTML = `<div class="text-slate-600 font-medium mb-1">Menghapus latar belakang...</div><div class="text-xs text-slate-400">Proses ini memakan waktu 2-5 detik.</div>`;
+            els.loadingOverlay.classList.remove('hidden');
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                const imageSource = currentImg.src;
+                const blob = await imglyRemoveBackground(imageSource);
+                const url = URL.createObjectURL(blob);
+                const newImg = new Image();
+                
+                await new Promise((resolve) => {
+                    newImg.onload = () => {
+                        window.state.photos[nik] = newImg; 
+                        resolve();
+                    };
+                    newImg.src = url;
+                });
+
+                window.renderFabricObjects();
+                els.loadingOverlay.classList.add('hidden');
+
+            } catch (error) {
+                console.error("BG Removal Error:", error);
+                alert("Gagal menghapus latar belakang. Pastikan koneksi internet stabil.");
+                els.loadingOverlay.classList.add('hidden');
+            }
+        });
+
+
+        function setupEventListeners() {
+            els.templateUpload.addEventListener('change', handleTemplateUpload);
+            els.excelUpload.addEventListener('change', handleExcelUpload);
+            els.photoUpload.addEventListener('change', handlePhotoUpload); 
+            els.btnGenerate.addEventListener('click', generatePDF);
+        }
+
+        function handleTemplateUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    window.state.templateImage = img;
+                    window.state.imageWidth = img.width; window.state.imageHeight = img.height;
+                    
+                    if (!window.state.cloudConfigLoaded) {
+                        const w = img.width; const h = img.height;
+                        
+                        window.state.photoConfig.x = w * 0.12; 
+                        window.state.photoConfig.y = h * 0.28; 
+                        window.state.photoConfig.width = w * 0.38; 
+                        window.state.photoConfig.height = h * 0.30;
+                        
+                        window.state.fields.nama.size = Math.round(h * 0.035);
+                        window.state.fields.departemen.size = Math.round(h * 0.020);
+                        window.state.fields.nik.size = Math.round(h * 0.028);
+                        window.state.fields.tanggalJoin.size = Math.round(h * 0.026);
+                        
+                        Object.keys(window.state.fields).forEach(key => {
+                            window.state.fields[key].align = 'left';
+                            window.state.fields[key].weight = 'bold';
+                        });
+
+                        const startX = w * 0.12;
+                        window.state.fields.nama.x = startX; window.state.fields.nama.y = h * 0.65;
+                        window.state.fields.departemen.x = startX; window.state.fields.departemen.y = h * 0.70;
+                        window.state.fields.nik.x = startX; window.state.fields.nik.y = h * 0.75;
+                        window.state.fields.tanggalJoin.x = startX; window.state.fields.tanggalJoin.y = h * 0.80;
+                        
+                        saveConfigToCloud();
+                    }
+
+                    els.canvasEmptyState.classList.add('hidden'); els.canvasWrapper.classList.remove('hidden');
+                    els.configSection.classList.remove('opacity-50', 'pointer-events-none'); els.fotoSection.classList.remove('opacity-50', 'pointer-events-none');
+                    if(window.state.excelData.length > 0) els.btnGenerate.disabled = false;
+                    initFabricCanvas();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.renderTable = function() {
+            if (window.state.excelData.length === 0) { els.dataCount.textContent = '0 Data'; els.dataTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400 bg-slate-50/50">Belum ada data Excel yang diunggah.</td></tr>`; els.btnGenerate.disabled = true; return; }
+            els.dataCount.textContent = `${window.state.excelData.length} Data`; els.btnGenerate.disabled = !window.state.templateImage;
+
+            let html = ''; const previewData = window.state.excelData.slice(0, 50);
+            previewData.forEach((row, index) => {
+                const isActive = index === window.state.currentPreviewIndex;
+                const activeClass = isActive ? 'bg-brand-50 border-l-4 border-brand-500' : 'hover:bg-slate-50 border-l-4 border-transparent';
+                const hasPhoto = !!window.state.photos[row.nik];
+                const photoBadge = hasPhoto ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium flex items-center w-fit gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Ada</span>` : `<span class="bg-red-50 text-red-600 px-2 py-1 rounded text-xs flex items-center w-fit gap-1"><i data-lucide="x-circle" class="w-3 h-3"></i> Kosong</span>`;
+
+                html += `
+                    <tr class="transition-colors cursor-pointer ${activeClass}" onclick="previewRow(${index})">
+                        <td class="px-6 py-3 whitespace-nowrap text-slate-500">${index + 1}</td>
+                        <td class="px-6 py-3 whitespace-nowrap font-medium text-slate-900">${row.nik || '-'}</td>
+                        <td class="px-6 py-3 whitespace-nowrap">${row.nama || '-'}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-slate-500"><span class="bg-slate-100 px-2 py-1 rounded text-xs">${row.departemen || '-'}</span></td>
+                        <td class="px-6 py-3 whitespace-nowrap">${photoBadge}</td>
+                        <td class="px-6 py-3 whitespace-nowrap text-center">${isActive ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded-full"><i data-lucide="eye" class="w-3 h-3"></i> Previewing</span>' : '<span class="text-xs text-slate-400 hover:text-brand-600 font-medium">Lihat</span>'}</td>
+                    </tr>
+                `;
+            });
+            if (window.state.excelData.length > 50) html += `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-brand-600 bg-brand-50/50 italic">... dan ${window.state.excelData.length - 50} data lainnya</td></tr>`;
+            els.dataTableBody.innerHTML = html; lucide.createIcons();
+        }
+
+        window.previewRow = function(index) {
+            if (!window.state.excelData[index]) return;
+            window.state.currentPreviewIndex = index; const row = window.state.excelData[index];
+            window.state.previewData = { nik: row.nik || 'N/A', nama: row.nama || 'N/A', departemen: row.departemen || 'N/A', tanggalJoin: row.tanggalJoin || 'N/A' };
+            window.renderTable(); window.renderFabricObjects(); 
+        };
+
+        function handleExcelUpload(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = new Uint8Array(event.target.result); 
+                    
+                    // PERBAIKAN 2: Gunakan opsi `cellDates: true` dan `raw: false` 
+                    // Agar library SheetJS merender tanggal persis seperti string di Excel (misal: 16 Feb 2026), bukan Serial Number (46109).
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                    const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '', raw: false });
+                    
+                    if (rawJson.length > 0) {
+                        const headers = Object.keys(rawJson[0]);
+                        const getHeader = (keywords) => headers.find(h => keywords.some(kw => h.toLowerCase().includes(kw))) || null;
+                        const map = { nik: getHeader(['nik', 'nip', 'id', 'nomor', 'no']), nama: getHeader(['nama', 'name', 'karyawan', 'pegawai']), departemen: getHeader(['dept', 'departemen', 'divisi', 'bagian', 'posisi', 'jabatan']), tanggalJoin: getHeader(['join', 'masuk', 'gabung', 'tanggal', 'date', 'tgl']) };
+                        window.state.excelData = rawJson.map(row => ({ nik: map.nik ? String(row[map.nik]) : '', nama: map.nama ? String(row[map.nama]) : '', departemen: map.departemen ? String(row[map.departemen]) : '', tanggalJoin: map.tanggalJoin ? String(row[map.tanggalJoin]) : '' }));
+                        window.previewRow(0); 
+                    } else { window.state.excelData = []; window.renderTable(); }
+                } catch (error) { alert('Gagal membaca Excel. Coba simpan ulang file excel Anda.'); }
+            }; reader.readAsArrayBuffer(file); e.target.value = '';
+        }
+
+        async function handlePhotoUpload(e) {
+            const files = e.target.files; 
+            if (!files || files.length === 0) return;
+            
+            const totalFiles = files.length;
+            els.loadingTitle.textContent = "Mengunggah Foto..."; 
+            els.loadingText.innerHTML = `<div class="font-bold text-3xl text-brand-600 mb-1">0%</div><div class="text-slate-600 font-medium mb-1">Menyiapkan ${totalFiles} foto...</div>`; 
+            els.loadingOverlay.classList.remove('hidden');
+            
+            let loadedCount = 0;
+            const startTime = Date.now();
+            
+            // PERBAIKAN: Gunakan pemrosesan Asynchronous Berurutan (Sequential) dan ObjectURL
+            // Ini akan mencegah browser Freeze/Hang saat memproses puluhan/ratusan foto resolusi tinggi
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Gunakan URL.createObjectURL (Jauh lebih ringan & instan dibanding FileReader Base64)
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        const nikFromFilename = file.name.replace(/\.[^/.]+$/, "");
+                        window.state.photos[nikFromFilename] = img;
+                        window.state.photosOriginal[nikFromFilename] = img; 
+                        
+                        loadedCount++;
+                        
+                        // Perhitungan UI
+                        const percent = Math.round((loadedCount / totalFiles) * 100);
+                        const elapsedMs = Date.now() - startTime;
+                        let timeText = "Menghitung...";
+                        
+                        if (loadedCount > 2) {
+                            const msPerFile = elapsedMs / loadedCount;
+                            const remainingMs = msPerFile * (totalFiles - loadedCount);
+                            const remainingSec = Math.ceil(remainingMs / 1000);
+                            timeText = remainingSec > 60 ? `${Math.floor(remainingSec / 60)} menit ${remainingSec % 60} detik` : `${remainingSec} detik`;
+                        } else if (loadedCount === totalFiles) {
+                            timeText = "Selesai!";
+                        }
+
+                        els.loadingText.innerHTML = `
+                            <div class="font-bold text-3xl text-brand-600 mb-1">${percent}%</div>
+                            <div class="text-slate-600 font-medium mb-1">Sukses: ${loadedCount} dari ${totalFiles} foto</div>
+                            <div class="text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
+                        `;
+                        resolve();
+                    }; 
+                    
+                    img.onerror = () => {
+                        // Jika ada file corrupt, lewati agar tidak membuat proses berhenti
+                        loadedCount++;
+                        resolve();
+                    };
+                    
+                    img.src = url;
+                });
+
+                // Memberi nafas pada memori browser setiap 5 foto agar UI tidak macet (Hang)
+                if (i % 5 === 0) {
+                    await new Promise(r => setTimeout(r, 10));
+                }
+            }
+            
+            // Proses Selesai
+            setTimeout(() => {
+                els.loadingOverlay.classList.add('hidden'); 
+                window.renderTable(); 
+                window.renderFabricObjects(); 
+            }, 500);
+            
+            e.target.value = ''; // Reset input
+        }
+
+        async function generatePDF() {
+            if (!window.state.templateImage || window.state.excelData.length === 0) return;
+            
+            els.loadingTitle.textContent = "Memproses PDF..."; 
+            els.loadingText.innerHTML = `<div class="font-bold text-3xl text-brand-600 mb-1">0%</div><div class="text-slate-600 font-medium mb-1">Menyiapkan Dokumen...</div>`;
+            els.loadingOverlay.classList.remove('hidden');
+            
+            const startTime = Date.now();
+            
+            try {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+                const isLandscape = window.state.imageWidth > window.state.imageHeight;
+                const cardW = isLandscape ? 80 : 50; const cardH = isLandscape ? 50 : 80;
+                const cols = isLandscape ? 3 : 5; const rows = isLandscape ? 4 : 2; const cardsPerPage = cols * rows;
+                const marginX = (297 - (cols * cardW)) / (cols + 1); const marginY = (210 - (rows * cardH)) / (rows + 1);
+                const scaleX = cardW / window.state.imageWidth; const scaleY = cardH / window.state.imageHeight;
+                const total = window.state.excelData.length;
+
+                for (let i = 0; i < total; i++) {
+                    const rowData = window.state.excelData[i];
+                    const percent = Math.round((i / total) * 100);
+                    const elapsedMs = Date.now() - startTime;
+                    let timeText = "Menghitung...";
+                    
+                    if (i > 0) {
+                        const msPerFile = elapsedMs / i;
+                        const remainingMs = msPerFile * (total - i);
+                        const remainingSec = Math.ceil(remainingMs / 1000);
+                        timeText = remainingSec > 60 ? `${Math.floor(remainingSec / 60)} menit ${remainingSec % 60} detik` : `${remainingSec} detik`;
+                    }
+
+                    els.loadingText.innerHTML = `
+                        <div class="font-bold text-3xl text-brand-600 mb-1">${percent}%</div>
+                        <div class="text-slate-600 font-medium mb-1">Mencetak ID Card ${i + 1} dari ${total}</div>
+                        <div class="text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
+                    `;
+
+                    if (i > 0 && i % cardsPerPage === 0) doc.addPage('a4', 'landscape');
+                    const col = (i % cardsPerPage) % cols; const row = Math.floor((i % cardsPerPage) / cols);
+                    const startX = marginX + col * (cardW + marginX); const startY = marginY + row * (cardH + marginY);
+
+                    doc.addImage(window.state.templateImage.src, 'JPEG', startX, startY, cardW, cardH, '', 'FAST');
+
+                    if (window.state.photoConfig && window.state.photoConfig.show) {
+                        const pc = window.state.photoConfig;
+                        const photoImg = window.state.photos[String(rowData.nik)];
+                        
+                        if (photoImg) {
+                            const photoW = pc.width * scaleX; const photoH = pc.height * scaleY;
+                            const ptX = startX + (pc.x * scaleX); const ptY = startY + (pc.y * scaleY);
+                            
+                            const oc = document.createElement('canvas');
+                            const diag = Math.sqrt(pc.width*pc.width + pc.height*pc.height) * 1.5;
+                            oc.width = diag; oc.height = diag;
+                            const octx = oc.getContext('2d');
+                            octx.translate(diag/2, diag/2);
+                            if(pc.angle !== 0) octx.rotate(pc.angle * Math.PI / 180);
+                            
+                            const b = (pc.brightness || 0) + 1; 
+                            const c = (pc.contrast || 0) + 1;
+                            if (b !== 1 || c !== 1) {
+                                octx.filter = `brightness(${b * 100}%) contrast(${c * 100}%)`;
+                            }
+                            
+                            octx.drawImage(photoImg, -pc.width/2, -pc.height/2, pc.width, pc.height);
+                            
+                            const finalImgScaleW = diag * scaleX; const finalImgScaleH = diag * scaleY;
+                            doc.addImage(oc.toDataURL('image/png'), 'PNG', ptX - finalImgScaleW/2 + photoW/2, ptY - finalImgScaleH/2 + photoH/2, finalImgScaleW, finalImgScaleH, '', 'FAST');
+                        }
+                    }
+
+                    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.rect(startX, startY, cardW, cardH);
+
+                    Object.keys(window.state.fields).forEach(key => {
+                        const field = window.state.fields[key]; const text = String(rowData[key] || ''); if (!text) return; 
+                        const hexToRgb = (hex) => { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0,0,0]; };
+                        const rgb = hexToRgb(field.color);
+                        doc.setTextColor(rgb[0], rgb[1], rgb[2]); doc.setFont('helvetica', field.weight === 'bold' ? 'bold' : 'normal'); doc.setFontSize(field.size * scaleY * 2.83465);
+                        const textX = startX + (field.x * scaleX); const textY = startY + (field.y * scaleY);
+                        doc.text(text, textX, textY, { align: field.align, baseline: 'middle', angle: -field.angle });
+                    });
+
+                    if (i % 20 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+                }
+
+                els.loadingText.innerHTML = `<div class="font-bold text-3xl text-brand-600 mb-1">100%</div><div class="text-slate-600 font-medium mb-1">Mengunduh File PDF...</div>`; 
+                await new Promise(resolve => setTimeout(resolve, 100));
+                doc.save(`TagIn_ID_Cards_A4_${new Date().toISOString().split('T')[0]}.pdf`);
+                await trackGenerationStats(total);
+
+            } catch (error) { alert("Terjadi kesalahan saat memproses PDF."); } finally { els.loadingOverlay.classList.add('hidden'); }
+        }
+
+        init();
+    </script>
+</body>
+</html>
