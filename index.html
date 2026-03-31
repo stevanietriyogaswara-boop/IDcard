@@ -67,15 +67,15 @@
 
             <div class="w-px h-6 bg-slate-200 mx-1"></div>
 
-            <!-- Cloud Sync Indicator -->
+            <!-- Sync Indicator -->
             <div id="cloudStatus" class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200" title="Status Sinkronisasi Layout">
                 <i data-lucide="loader-2" class="w-4 h-4 text-slate-400 animate-spin"></i>
-                <span class="text-xs font-semibold text-slate-600 hidden sm:inline">Menghubungkan...</span>
+                <span class="text-xs font-semibold text-slate-600 hidden sm:inline">Menyiapkan...</span>
             </div>
 
             <!-- User Auth Container -->
             <div id="authContainer" class="flex items-center gap-2">
-                <button id="btnLoginGoogle" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
+                <button id="btnLoginGoogle" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all hidden">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
                     <span class="hidden sm:inline">Login Google</span>
                 </button>
@@ -121,7 +121,7 @@
                             <div>
                                 <p class="font-semibold mb-1">Editor Visual Aktif!</p>
                                 <p class="text-xs text-brand-700 leading-relaxed">
-                                    Klik elemen (Teks / Foto) di layar pratinjau. Anda bisa <b>menggeser, memutar, dan mengubah ukurannya</b>. Posisi akan otomatis tersimpan ke Cloud.
+                                    Klik elemen (Teks / Foto) di layar pratinjau. Anda bisa <b>menggeser, memutar, dan mengubah ukurannya</b>. Posisi otomatis tersimpan.
                                 </p>
                             </div>
                         </div>
@@ -251,7 +251,7 @@
                     <div class="flex items-center gap-3">
                         <div class="text-right hidden md:block">
                             <p class="text-xs font-semibold text-slate-700">Format Output</p>
-                            <p class="text-[10px] text-slate-500">A4 Landscape • 10 ID/Lembar (5x8cm)</p>
+                            <p class="text-[10px] text-slate-500">A4 Landscape • Tumpukan Rapat (Cocok utk Bolak-Balik)</p>
                         </div>
                         <button id="btnGenerate" disabled class="bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm">
                             <i data-lucide="download-cloud" class="w-4 h-4"></i>
@@ -320,7 +320,7 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold text-slate-800">Dashboard Statistik</h2>
-                        <p class="text-xs text-slate-500" id="adminLastUpdate">Live update dari Cloud Database</p>
+                        <p class="text-xs text-slate-500" id="adminLastUpdate">Live update</p>
                     </div>
                 </div>
                 <button id="btnCloseAdminDash" class="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -340,7 +340,7 @@
         </div>
     </div>
 
-    <!-- Firebase System Module -->
+    <!-- Firebase & Core System Module -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -431,17 +431,39 @@
         };
 
         window.fCanvas = null; 
+        
+        // ENV AWARENESS (Firebase vs Local Storage)
+        let useCloud = false;
+        let auth = null, db = null, appId = null;
         let currentUser = null;
         let unsubscribeAdminStats = null;
 
-        // Firebase Initialization
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                useCloud = true;
+            }
+        } catch (e) {
+            console.log("Berjalan di Mode Standalone / GitHub Pages (Tanpa Cloud DB)");
+        }
 
         async function initAuth() {
+            if (!useCloud) {
+                setCloudStatus('success', 'Mode Lokal Aktif');
+                els.authContainer.innerHTML = `
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-3 pr-3 py-1.5 border border-slate-200" title="Anda berjalan pada mode penyimpanan lokal browser.">
+                        <i data-lucide="hard-drive" class="w-4 h-4 text-slate-500"></i>
+                        <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Penyimpanan Lokal</span>
+                    </div>`;
+                lucide.createIcons();
+                loadConfig(); 
+                return;
+            }
+
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
@@ -449,55 +471,44 @@
                     await signInAnonymously(auth);
                 }
                 trackUserVisit();
+                
+                onAuthStateChanged(auth, async (user) => {
+                    currentUser = user;
+                    if (user) {
+                        setCloudStatus('success', 'Tersinkronisasi');
+                        if (!user.isAnonymous) {
+                            const photoUrl = user.photoURL || 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+                            const displayName = user.displayName ? user.displayName.split(" ")[0] : 'User';
+                            els.authContainer.innerHTML = `
+                                <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-1 pr-3 py-1 border border-slate-200">
+                                    <img src="${photoUrl}" class="w-6 h-6 rounded-full border border-white shadow-sm" alt="Avatar">
+                                    <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Hai, ${displayName}</span>
+                                </div>
+                                <button id="btnLogout" class="text-xs font-medium text-slate-500 hover:text-red-500 ml-2 transition-colors">Logout</button>
+                            `;
+                            document.getElementById('btnLogout').addEventListener('click', async () => {
+                                await signOut(auth);
+                                await signInAnonymously(auth);
+                            });
+                        } else {
+                            els.authContainer.innerHTML = `
+                                <button id="btnLoginGoogleRe" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
+                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
+                                    <span class="hidden sm:inline">Login Google</span>
+                                </button>
+                            `;
+                            document.getElementById('btnLoginGoogleRe').addEventListener('click', async () => {
+                                try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) {}
+                            });
+                        }
+                        await loadConfig();
+                    }
+                });
             } catch (e) {
                 setCloudStatus('error', 'Cloud Offline');
+                loadConfig(); 
             }
         }
-
-        els.btnLoginGoogle.addEventListener('click', async () => {
-            if (currentUser && !currentUser.isAnonymous) {
-                await signOut(auth);
-                await signInAnonymously(auth);
-                return;
-            }
-            try {
-                const provider = new GoogleAuthProvider();
-                await signInWithPopup(auth, provider);
-            } catch (error) { alert("Login Google dibatalkan."); }
-        });
-
-        onAuthStateChanged(auth, async (user) => {
-            currentUser = user;
-            if (user) {
-                setCloudStatus('success', 'Tersinkronisasi');
-                if (!user.isAnonymous) {
-                    const photoUrl = user.photoURL || 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
-                    const displayName = user.displayName ? user.displayName.split(" ")[0] : 'User';
-                    els.authContainer.innerHTML = `
-                        <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-1 pr-3 py-1 border border-slate-200">
-                            <img src="${photoUrl}" class="w-6 h-6 rounded-full border border-white shadow-sm" alt="Avatar">
-                            <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Hai, ${displayName}</span>
-                        </div>
-                        <button id="btnLogout" class="text-xs font-medium text-slate-500 hover:text-red-500 ml-2 transition-colors">Logout</button>
-                    `;
-                    document.getElementById('btnLogout').addEventListener('click', async () => {
-                        await signOut(auth);
-                        await signInAnonymously(auth);
-                    });
-                } else {
-                    els.authContainer.innerHTML = `
-                        <button id="btnLoginGoogleRe" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-                            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
-                            <span class="hidden sm:inline">Login Google</span>
-                        </button>
-                    `;
-                    document.getElementById('btnLoginGoogleRe').addEventListener('click', async () => {
-                        try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch(e) {}
-                    });
-                }
-                await loadConfigFromCloud();
-            }
-        });
 
         function setCloudStatus(type, message) {
             if(type === 'loading') els.cloudStatus.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 text-brand-500 animate-spin"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
@@ -506,8 +517,62 @@
             lucide.createIcons();
         }
 
+        // --- STORAGE ROUTER (LOCAL vs CLOUD) ---
+        async function loadConfig() {
+            const localSaved = localStorage.getItem('tagin_config');
+            if (localSaved) {
+                try {
+                    const data = JSON.parse(localSaved);
+                    if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
+                    if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
+                    window.state.cloudConfigLoaded = true;
+                    els.togglePhoto.checked = window.state.photoConfig.show;
+                    els.toolBrightness.value = window.state.photoConfig.brightness || 0;
+                    els.toolContrast.value = window.state.photoConfig.contrast || 0;
+                    if(window.fCanvas) renderFabricObjects();
+                } catch(e){}
+            }
+
+            if (useCloud && currentUser) {
+                try {
+                    const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
+                    const docSnap = await getDoc(layoutRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
+                        if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
+                        window.state.cloudConfigLoaded = true;
+                        els.togglePhoto.checked = window.state.photoConfig.show;
+                        els.toolBrightness.value = window.state.photoConfig.brightness || 0;
+                        els.toolContrast.value = window.state.photoConfig.contrast || 0;
+                        if(window.fCanvas) renderFabricObjects();
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function saveConfig() {
+            const configObj = { fields: window.state.fields, photoConfig: window.state.photoConfig, updatedAt: new Date().toISOString() };
+            localStorage.setItem('tagin_config', JSON.stringify(configObj));
+            
+            if (!useCloud) {
+                setCloudStatus('success', 'Tersimpan Lokal');
+                return;
+            }
+
+            if (currentUser) {
+                try {
+                    setCloudStatus('loading', 'Menyimpan...');
+                    const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
+                    await setDoc(layoutRef, configObj);
+                    setTimeout(() => setCloudStatus('success', 'Tersimpan'), 500); 
+                } catch (e) { setCloudStatus('error', 'Gagal Simpan'); }
+            }
+        }
+
+        // --- STATS TRACKER ---
         async function trackGenerationStats(count) {
-            if (!currentUser) return;
+            if (!useCloud || !currentUser) return;
             try {
                 const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
                 await setDoc(statsRef, { totalGenerated: increment(count), lastActive: new Date().toISOString() }, { merge: true });
@@ -515,7 +580,7 @@
         }
 
         async function trackUserVisit() {
-            if (!currentUser || localStorage.getItem('tagin_user_tracked_session')) return;
+            if (!useCloud || !currentUser || localStorage.getItem('tagin_user_tracked_session')) return;
             try {
                 const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
                 await setDoc(statsRef, { totalUsers: increment(1) }, { merge: true });
@@ -524,13 +589,19 @@
         }
 
         // --- Admin Dashboard logic ---
-        els.btnOpenAdminAuth.addEventListener('click', () => { els.inputAdminPassword.value = ''; els.errorAdminPass.classList.add('hidden'); els.adminAuthModal.classList.remove('hidden'); });
+        els.btnOpenAdminAuth.addEventListener('click', () => { 
+            if(!useCloud) {
+                alert("Mode Admin Database dinonaktifkan karena Anda sedang menjalankan website di Mode Standalone (Local). Fitur ini membutuhkan koneksi Cloud Server aktif.");
+                return;
+            }
+            els.inputAdminPassword.value = ''; els.errorAdminPass.classList.add('hidden'); els.adminAuthModal.classList.remove('hidden'); 
+        });
         els.btnCancelAdminAuth.addEventListener('click', () => els.adminAuthModal.classList.add('hidden'));
         els.btnSubmitAdminAuth.addEventListener('click', () => {
             if (els.inputAdminPassword.value === 'admin123') { els.adminAuthModal.classList.add('hidden'); openAdminDashboard(); } else els.errorAdminPass.classList.remove('hidden');
         });
         function openAdminDashboard() {
-            if (!currentUser) return;
+            if (!useCloud || !currentUser) return;
             els.adminDashboardModal.classList.remove('hidden');
             const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'global');
             unsubscribeAdminStats = onSnapshot(statsRef, (docSnap) => {
@@ -544,33 +615,6 @@
         }
         els.btnCloseAdminDash.addEventListener('click', () => { els.adminDashboardModal.classList.add('hidden'); if(unsubscribeAdminStats) unsubscribeAdminStats(); });
 
-        // --- Cloud Config ---
-        async function loadConfigFromCloud() {
-            if (!currentUser) return;
-            try {
-                const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
-                const docSnap = await getDoc(layoutRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
-                    if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
-                    window.state.cloudConfigLoaded = true;
-                    els.togglePhoto.checked = window.state.photoConfig.show;
-                    els.toolBrightness.value = window.state.photoConfig.brightness || 0;
-                    els.toolContrast.value = window.state.photoConfig.contrast || 0;
-                    if(window.fCanvas) renderFabricObjects();
-                }
-            } catch (e) {}
-        }
-        async function saveConfigToCloud() {
-            if (!currentUser) return;
-            try {
-                setCloudStatus('loading', 'Menyimpan...');
-                const layoutRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'layouts', 'default');
-                await setDoc(layoutRef, { fields: window.state.fields, photoConfig: window.state.photoConfig, updatedAt: new Date().toISOString() });
-                setTimeout(() => setCloudStatus('success', 'Tersimpan'), 500); 
-            } catch (e) { setCloudStatus('error', 'Gagal Simpan'); }
-        }
 
         // --- Core Application & Fabric ---
         function init() {
@@ -592,7 +636,6 @@
             renderFabricObjects();
         }
 
-        // PERBAIKAN 1: Return element canvas langsung, jangan img base64 yang belum di load
         function getPlaceholderImageElement() {
             const oc = document.createElement('canvas'); oc.width = 300; oc.height = 400; const ctx = oc.getContext('2d');
             ctx.fillStyle = '#cbd5e1'; ctx.fillRect(0, 0, 300, 400); ctx.fillStyle = '#64748b'; ctx.font = 'bold 40px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -608,7 +651,6 @@
             if (window.state.photoConfig.show) {
                 const imgEl = window.state.photos[window.state.previewData.nik] || getPlaceholderImageElement();
                 
-                // PERBAIKAN 1: Hapus photo lama jika ada, lalu render ulang agar skalanya presisi
                 if (photoObj) {
                     window.fCanvas.remove(photoObj);
                 }
@@ -622,9 +664,8 @@
                 photoObj.scaleToWidth(window.state.photoConfig.width);
                 photoObj.scaleToHeight(window.state.photoConfig.height);
                 window.fCanvas.add(photoObj);
-                photoObj.sendToBack(); // Pastikan foto ada di belakang text
+                photoObj.sendToBack(); 
 
-                // Menerapkan Filter Foto (Brightness & Contrast)
                 photoObj.filters = [];
                 if (window.state.photoConfig.brightness) photoObj.filters.push(new fabric.Image.filters.Brightness({ brightness: window.state.photoConfig.brightness }));
                 if (window.state.photoConfig.contrast) photoObj.filters.push(new fabric.Image.filters.Contrast({ contrast: window.state.photoConfig.contrast }));
@@ -671,7 +712,7 @@
                     field.size = newSize; if(els.toolSize.value) els.toolSize.value = newSize;
                 }
             }
-            saveConfigToCloud(); 
+            saveConfig(); 
         }
 
         function onObjectSelected(e) {
@@ -707,7 +748,7 @@
                 const stateProp = prop === 'fill' ? 'color' : prop === 'fontWeight' ? 'weight' : prop === 'textAlign' ? 'align' : prop;
                 window.state.fields[obj.id][stateProp] = value;
                 if(prop === 'textAlign') obj.set('originX', value === 'center' ? 'center' : (value === 'right' ? 'right' : 'left'));
-                window.fCanvas.renderAll(); saveConfigToCloud();
+                window.fCanvas.renderAll(); saveConfig();
             }
         }
 
@@ -718,14 +759,14 @@
         els.toolBold.addEventListener('click', () => { const obj = window.fCanvas.getActiveObject(); if(obj) { const newW = obj.fontWeight === 'bold' ? 'normal' : 'bold'; els.toolBold.classList.toggle('bg-slate-200', newW === 'bold'); updateActiveTextObj('fontWeight', newW); } });
         const applyAlign = (align) => { els.toolAlignLeft.classList.toggle('bg-slate-200', align === 'left'); els.toolAlignCenter.classList.toggle('bg-slate-200', align === 'center'); els.toolAlignRight.classList.toggle('bg-slate-200', align === 'right'); updateActiveTextObj('textAlign', align); };
         els.toolAlignLeft.addEventListener('click', () => applyAlign('left')); els.toolAlignCenter.addEventListener('click', () => applyAlign('center')); els.toolAlignRight.addEventListener('click', () => applyAlign('right'));
-        els.togglePhoto.addEventListener('change', (e) => { window.state.photoConfig.show = e.target.checked; saveConfigToCloud(); window.renderFabricObjects(); });
+        els.togglePhoto.addEventListener('change', (e) => { window.state.photoConfig.show = e.target.checked; saveConfig(); window.renderFabricObjects(); });
 
         
         function applyImageFilters() {
             window.state.photoConfig.brightness = parseFloat(els.toolBrightness.value);
             window.state.photoConfig.contrast = parseFloat(els.toolContrast.value);
             window.renderFabricObjects();
-            saveConfigToCloud();
+            saveConfig();
         }
         
         els.toolBrightness.addEventListener('input', applyImageFilters);
@@ -812,7 +853,7 @@
                         window.state.fields.nik.x = startX; window.state.fields.nik.y = h * 0.75;
                         window.state.fields.tanggalJoin.x = startX; window.state.fields.tanggalJoin.y = h * 0.80;
                         
-                        saveConfigToCloud();
+                        saveConfig();
                     }
 
                     els.canvasEmptyState.classList.add('hidden'); els.canvasWrapper.classList.remove('hidden');
@@ -865,8 +906,6 @@
                 try {
                     const data = new Uint8Array(event.target.result); 
                     
-                    // PERBAIKAN 2: Gunakan opsi `cellDates: true` dan `raw: false` 
-                    // Agar library SheetJS merender tanggal persis seperti string di Excel (misal: 16 Feb 2026), bukan Serial Number (46109).
                     const workbook = XLSX.read(data, {type: 'array', cellDates: true});
                     const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '', raw: false });
                     
@@ -893,12 +932,8 @@
             let loadedCount = 0;
             const startTime = Date.now();
             
-            // PERBAIKAN: Gunakan pemrosesan Asynchronous Berurutan (Sequential) dan ObjectURL
-            // Ini akan mencegah browser Freeze/Hang saat memproses puluhan/ratusan foto resolusi tinggi
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                
-                // Gunakan URL.createObjectURL (Jauh lebih ringan & instan dibanding FileReader Base64)
                 const url = URL.createObjectURL(file);
                 const img = new Image();
                 
@@ -910,7 +945,6 @@
                         
                         loadedCount++;
                         
-                        // Perhitungan UI
                         const percent = Math.round((loadedCount / totalFiles) * 100);
                         const elapsedMs = Date.now() - startTime;
                         let timeText = "Menghitung...";
@@ -933,7 +967,6 @@
                     }; 
                     
                     img.onerror = () => {
-                        // Jika ada file corrupt, lewati agar tidak membuat proses berhenti
                         loadedCount++;
                         resolve();
                     };
@@ -941,22 +974,21 @@
                     img.src = url;
                 });
 
-                // Memberi nafas pada memori browser setiap 5 foto agar UI tidak macet (Hang)
                 if (i % 5 === 0) {
                     await new Promise(r => setTimeout(r, 10));
                 }
             }
             
-            // Proses Selesai
             setTimeout(() => {
                 els.loadingOverlay.classList.add('hidden'); 
                 window.renderTable(); 
                 window.renderFabricObjects(); 
             }, 500);
             
-            e.target.value = ''; // Reset input
+            e.target.value = ''; 
         }
 
+        // --- NEW PDF GENERATION: NO GAPS, PERFECTLY CENTERED ---
         async function generatePDF() {
             if (!window.state.templateImage || window.state.excelData.length === 0) return;
             
@@ -971,10 +1003,26 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
                 const isLandscape = window.state.imageWidth > window.state.imageHeight;
-                const cardW = isLandscape ? 80 : 50; const cardH = isLandscape ? 50 : 80;
-                const cols = isLandscape ? 3 : 5; const rows = isLandscape ? 4 : 2; const cardsPerPage = cols * rows;
-                const marginX = (297 - (cols * cardW)) / (cols + 1); const marginY = (210 - (rows * cardH)) / (rows + 1);
-                const scaleX = cardW / window.state.imageWidth; const scaleY = cardH / window.state.imageHeight;
+                
+                // Ukuran fisik standar ID Card
+                const cardW = isLandscape ? 80 : 50; 
+                const cardH = isLandscape ? 50 : 80;
+                
+                // Konfigurasi Grid Tumpukan Rapat (Menyerupai Template Kertas Cetak)
+                const cols = isLandscape ? 3 : 5; 
+                const rows = isLandscape ? 4 : 2; 
+                const cardsPerPage = cols * rows;
+                
+                // LOGIKA BARU: Tumpuk semua kartu menjadi satu blok solid tanpa celah
+                const blockWidth = cols * cardW;
+                const blockHeight = rows * cardH;
+                
+                // Pusatkan seluruh blok tersebut di atas kertas A4 (297x210 mm)
+                const offsetLeft = (297 - blockWidth) / 2;
+                const offsetTop = (210 - blockHeight) / 2;
+
+                const scaleX = cardW / window.state.imageWidth; 
+                const scaleY = cardH / window.state.imageHeight;
                 const total = window.state.excelData.length;
 
                 for (let i = 0; i < total; i++) {
@@ -997,8 +1045,12 @@
                     `;
 
                     if (i > 0 && i % cardsPerPage === 0) doc.addPage('a4', 'landscape');
-                    const col = (i % cardsPerPage) % cols; const row = Math.floor((i % cardsPerPage) / cols);
-                    const startX = marginX + col * (cardW + marginX); const startY = marginY + row * (cardH + marginY);
+                    const col = (i % cardsPerPage) % cols; 
+                    const row = Math.floor((i % cardsPerPage) / cols);
+
+                    // Penempatan persis bertumpuk di dalam blok yang sudah ditengahkan
+                    const startX = offsetLeft + (col * cardW);
+                    const startY = offsetTop + (row * cardH);
 
                     doc.addImage(window.state.templateImage.src, 'JPEG', startX, startY, cardW, cardH, '', 'FAST');
 
@@ -1030,8 +1082,10 @@
                         }
                     }
 
+                    // Garis potong
                     doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.rect(startX, startY, cardW, cardH);
 
+                    // Render Teks
                     Object.keys(window.state.fields).forEach(key => {
                         const field = window.state.fields[key]; const text = String(rowData[key] || ''); if (!text) return; 
                         const hexToRgb = (hex) => { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0,0,0]; };
@@ -1056,3 +1110,4 @@
     </script>
 </body>
 </html>
+```
