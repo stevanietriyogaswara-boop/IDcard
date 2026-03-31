@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TagIn - Mass ID Card Generator</title>
     
     <!-- Google Fonts -->
@@ -35,14 +35,16 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* Toolbar Responsif & Centered */
         .floating-toolbar {
-            transform: translateY(-20px);
+            left: 50%;
+            transform: translate(-50%, -20px);
             opacity: 0;
             pointer-events: none;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .floating-toolbar.active {
-            transform: translateY(0);
+            transform: translate(-50%, 0);
             opacity: 1;
             pointer-events: auto;
         }
@@ -51,56 +53,65 @@
 <body class="text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
 
     <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shrink-0 z-10 relative">
-        <div class="flex items-center gap-3">
-            <div class="bg-brand-600 text-white p-2 rounded-lg shadow-sm">
-                <i data-lucide="badge-check" class="w-6 h-6"></i>
+    <nav class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap justify-between items-center shrink-0 z-10 relative gap-3">
+        <div class="flex items-center gap-2 md:gap-3">
+            <div class="bg-brand-600 text-white p-1.5 md:p-2 rounded-lg shadow-sm">
+                <i data-lucide="badge-check" class="w-5 h-5 md:w-6 md:h-6"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-900 tracking-tight">TagIn</h1>
+            <h1 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">TagIn</h1>
         </div>
-        <div class="flex items-center gap-4 text-sm font-medium text-slate-500">
+        <div class="flex items-center gap-2 md:gap-4 text-sm font-medium text-slate-500">
             
+            <!-- Breadcrumb (Sembunyi di HP) -->
+            <div class="hidden lg:flex items-center gap-4 mr-2">
+                <span class="flex items-center gap-1"><i data-lucide="layout-template" class="w-4 h-4"></i> Atur Template</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
+                <span class="flex items-center gap-1"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Import Data</span>
+            </div>
+
             <!-- Tombol Admin -->
-            <button id="btnOpenAdminAuth" class="text-xs font-semibold text-slate-500 hover:text-brand-600 px-3 py-1.5 rounded-full hover:bg-slate-100 transition-colors flex items-center gap-1.5">
-                <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Dashboard Admin
+            <button id="btnOpenAdminAuth" class="text-xs font-semibold text-slate-500 hover:text-brand-600 px-2 py-1.5 md:px-3 md:py-1.5 rounded-full hover:bg-slate-100 transition-colors flex items-center gap-1.5" title="Dashboard Admin">
+                <i data-lucide="bar-chart-2" class="w-4 h-4"></i> <span class="hidden sm:inline">Admin</span>
             </button>
 
-            <div class="w-px h-6 bg-slate-200 mx-1"></div>
+            <div class="w-px h-5 md:h-6 bg-slate-200 mx-0.5 md:mx-1"></div>
 
             <!-- Sync Indicator -->
-            <div id="cloudStatus" class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-200" title="Status Sinkronisasi Layout">
-                <i data-lucide="loader-2" class="w-4 h-4 text-slate-400 animate-spin"></i>
-                <span class="text-xs font-semibold text-slate-600 hidden sm:inline">Menyiapkan...</span>
+            <div id="cloudStatus" class="flex items-center gap-1.5 md:gap-2 px-2 py-1.5 md:px-3 md:py-1.5 bg-slate-50 rounded-full border border-slate-200" title="Status Sinkronisasi Layout">
+                <i data-lucide="loader-2" class="w-3 h-3 md:w-4 md:h-4 text-slate-400 animate-spin"></i>
+                <span class="text-[10px] md:text-xs font-semibold text-slate-600 hidden md:inline">Menyiapkan...</span>
             </div>
 
             <!-- User Auth Container -->
             <div id="authContainer" class="flex items-center gap-2">
-                <button id="btnLoginGoogle" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all hidden">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
-                    <span class="hidden sm:inline">Login Google</span>
+                <button id="btnLoginGoogle" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-1.5 md:px-4 md:py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all hidden">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-3 h-3 md:w-4 md:h-4" alt="Google"> 
+                    <span class="hidden sm:inline">Login</span>
                 </button>
             </div>
         </div>
     </nav>
 
     <!-- Main Layout -->
-    <main class="flex-1 flex overflow-hidden">
+    <!-- PERUBAHAN: flex-col untuk HP, lg:flex-row untuk PC. overflow-y-auto di main untuk scroll keseluruhan HP -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative bg-slate-50">
         
         <!-- Sidebar Controls -->
-        <aside class="w-[400px] bg-white border-r border-slate-200 flex flex-col h-full overflow-y-auto shrink-0 scrollbar-hide">
-            <div class="p-6 space-y-8">
+        <!-- PERUBAHAN: w-full di HP, lg:w-[400px] di PC. Tinggi menyesuaikan isi di HP, h-full di PC -->
+        <aside class="w-full lg:w-[400px] bg-white border-b lg:border-r border-slate-200 flex flex-col shrink-0 lg:h-full lg:overflow-y-auto scrollbar-hide">
+            <div class="p-4 md:p-6 space-y-6 md:space-y-8">
                 
                 <!-- Step 1: Upload Template -->
                 <section>
                     <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
                         <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
-                        Template ID Card
+                        Template Depan
                     </h2>
-                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                    <label class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
-                            <i data-lucide="image-plus" class="w-8 h-8 mb-2 text-slate-400"></i>
-                            <p class="text-sm font-semibold">Klik untuk upload template</p>
-                            <p class="text-xs text-slate-400 mt-1">PNG atau JPG (Disarankan resolusi tinggi)</p>
+                            <i data-lucide="image-plus" class="w-6 h-6 md:w-8 md:h-8 mb-2 text-slate-400"></i>
+                            <p class="text-xs md:text-sm font-semibold">Klik untuk upload template</p>
+                            <p class="text-[10px] md:text-xs text-slate-400 mt-1">PNG atau JPG</p>
                         </div>
                         <input id="templateUpload" type="file" class="hidden" accept="image/png, image/jpeg" />
                     </label>
@@ -113,24 +124,24 @@
                         Konfigurasi Layout
                     </h2>
                     
-                    <div class="bg-brand-50 border border-brand-200 rounded-xl p-4 text-sm text-brand-800 mb-4">
+                    <div class="bg-brand-50 border border-brand-200 rounded-xl p-3 md:p-4 text-sm text-brand-800 mb-4">
                         <div class="flex items-start gap-3">
-                            <div class="p-2 bg-brand-100 rounded-lg shrink-0">
-                                <i data-lucide="mouse-pointer-click" class="w-5 h-5 text-brand-600"></i>
+                            <div class="p-1.5 md:p-2 bg-brand-100 rounded-lg shrink-0">
+                                <i data-lucide="mouse-pointer-click" class="w-4 h-4 md:w-5 md:h-5 text-brand-600"></i>
                             </div>
                             <div>
-                                <p class="font-semibold mb-1">Editor Visual Aktif!</p>
-                                <p class="text-xs text-brand-700 leading-relaxed">
-                                    Klik elemen (Teks / Foto) di layar pratinjau. Anda bisa <b>menggeser, memutar, dan mengubah ukurannya</b>. Posisi otomatis tersimpan.
+                                <p class="font-semibold mb-0.5 md:mb-1 text-xs md:text-sm">Editor Visual Aktif!</p>
+                                <p class="text-[10px] md:text-xs text-brand-700 leading-relaxed">
+                                    Geser ke area kanvas, lalu <b>klik elemen (Teks/Foto)</b>. Anda bisa <b>menggeser, memutar, dan mengubah ukuran</b>.
                                 </p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Toggle Foto -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="bg-slate-50 p-3 md:p-4 rounded-xl border border-slate-200">
                         <label class="flex items-center justify-between cursor-pointer">
-                            <span class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <span class="text-xs md:text-sm font-semibold text-slate-700 flex items-center gap-2">
                                 <i data-lucide="image" class="w-4 h-4"></i> Tampilkan Foto Karyawan
                             </span>
                             <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
@@ -152,10 +163,10 @@
                         <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span>
                         Data Karyawan
                     </h2>
-                        <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-brand-200 border-dashed rounded-xl cursor-pointer bg-brand-50 hover:bg-brand-100 transition mb-3">
-                        <div class="flex flex-col items-center justify-center py-4 text-brand-600">
-                            <i data-lucide="table" class="w-6 h-6 mb-2"></i>
-                            <p class="text-sm font-semibold">Upload Data Excel</p>
+                        <label class="flex flex-col items-center justify-center w-full h-20 md:h-24 border-2 border-brand-200 border-dashed rounded-xl cursor-pointer bg-brand-50 hover:bg-brand-100 transition mb-3">
+                        <div class="flex flex-col items-center justify-center py-3 md:py-4 text-brand-600">
+                            <i data-lucide="table" class="w-5 h-5 md:w-6 md:h-6 mb-1.5 md:mb-2"></i>
+                            <p class="text-xs md:text-sm font-semibold">Upload Data Excel</p>
                         </div>
                         <input id="excelUpload" type="file" class="hidden" accept=".xlsx, .xls, .xlsb, .csv" />
                     </label>
@@ -167,16 +178,50 @@
                         <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">4</span>
                         Upload Foto (Masal)
                     </h2>
-                    <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition mb-3">
-                        <div class="flex flex-col items-center justify-center py-4 text-slate-500">
-                            <i data-lucide="images" class="w-6 h-6 mb-2"></i>
-                            <p class="text-sm font-semibold text-center px-2">Pilih Banyak Foto Sekaligus</p>
+                    <label class="flex flex-col items-center justify-center w-full h-20 md:h-24 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition mb-3">
+                        <div class="flex flex-col items-center justify-center py-3 md:py-4 text-slate-500">
+                            <i data-lucide="images" class="w-5 h-5 md:w-6 md:h-6 mb-1.5 md:mb-2"></i>
+                            <p class="text-xs md:text-sm font-semibold text-center px-2">Pilih Banyak Foto Sekaligus</p>
                         </div>
                         <input id="photoUpload" type="file" class="hidden" accept="image/png, image/jpeg" multiple />
                     </label>
-                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 items-start">
-                        <i data-lucide="info" class="w-4 h-4 text-blue-600 mt-0.5 shrink-0"></i>
-                        <p class="text-xs text-blue-800">Nama file foto <b>WAJIB SAMA</b> dengan NIK. <br><i>Contoh: 80115275.jpg</i></p>
+                    <div class="p-2.5 md:p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 items-start">
+                        <i data-lucide="info" class="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-600 mt-0.5 shrink-0"></i>
+                        <p class="text-[10px] md:text-xs text-blue-800">Nama file foto <b>WAJIB SAMA</b> dengan NIK. <br><i>Contoh: 80115275.jpg</i></p>
+                    </div>
+                </section>
+
+                <!-- Step 5: Kalibrasi Duplex Print -->
+                <section id="printSection" class="opacity-50 pointer-events-none transition-opacity pb-6 lg:pb-0">
+                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="bg-slate-100 text-slate-600 w-6 h-6 rounded-full flex items-center justify-center text-xs">5</span>
+                        Kalibrasi Cetak & Margin
+                    </h2>
+                    <div class="bg-indigo-50 p-3 md:p-4 rounded-xl border border-indigo-200 space-y-3">
+                        <p class="text-[10px] md:text-xs font-semibold text-indigo-800 mb-2">Samakan dengan Page Setup MS Word Anda:</p>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Margin Kiri (mm)</label>
+                                <input type="number" id="pdfMarginLeft" value="15" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs md:text-sm outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Margin Atas (mm)</label>
+                                <input type="number" id="pdfMarginTop" value="5" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs md:text-sm outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lebar Kartu (mm)</label>
+                                <input type="number" id="pdfCardW" value="50" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs md:text-sm outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tinggi Kartu (mm)</label>
+                                <input type="number" id="pdfCardH" value="80" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs md:text-sm outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                            </div>
+                        </div>
+                        <p class="text-[9px] md:text-[10px] text-indigo-600/80 leading-relaxed font-medium mt-2">
+                            *Setelan mutlak agar presisi 100% dengan bagian belakang saat Print Bolak-Balik (Duplex).
+                        </p>
                     </div>
                 </section>
 
@@ -184,96 +229,101 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col bg-slate-50 overflow-hidden relative">
+        <!-- PERUBAHAN: min-h-screen di HP agar kanvas dan tabel bisa memanjang ke bawah -->
+        <div class="w-full lg:flex-1 flex flex-col bg-slate-50 lg:overflow-hidden relative min-h-[800px] lg:min-h-0 border-t border-slate-200 lg:border-t-0">
             
             <!-- Canvas Preview Container -->
-            <div class="flex-1 overflow-auto p-8 flex flex-col items-center justify-start border-b border-slate-200 relative">
+            <!-- PERUBAHAN: overflow-auto untuk geser kanan kiri/atas bawah jika resolusi kanvas membesar -->
+            <div class="h-[400px] md:h-[500px] lg:flex-1 w-full overflow-auto p-4 md:p-8 flex flex-col items-center justify-start border-b border-slate-200 relative shrink-0">
                 
                 <!-- Floating Formatting Toolbar -->
-                <div id="floatingToolbar" class="floating-toolbar absolute top-6 z-50 bg-white shadow-xl border border-slate-200 rounded-full px-5 py-2.5 flex items-center gap-4">
+                <div id="floatingToolbar" class="floating-toolbar absolute top-4 lg:top-6 z-50 bg-white shadow-xl border border-slate-200 rounded-xl lg:rounded-full px-3 py-2 lg:px-5 lg:py-2.5 flex flex-wrap justify-center items-center gap-2 lg:gap-4 w-[95%] sm:w-auto">
                     
                     <!-- Toolbar Teks -->
-                    <div id="textTools" class="flex items-center gap-4 hidden">
-                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
-                            <input type="color" id="toolColor" class="w-7 h-7 rounded-full cursor-pointer border-0 p-0 bg-transparent overflow-hidden" title="Warna Teks">
+                    <div id="textTools" class="flex flex-wrap justify-center items-center gap-2 lg:gap-4 hidden w-full sm:w-auto">
+                        <div class="flex items-center gap-2 border-r border-slate-200 pr-2 lg:pr-4">
+                            <input type="color" id="toolColor" class="w-6 h-6 lg:w-7 lg:h-7 rounded-full cursor-pointer border-0 p-0 bg-transparent overflow-hidden" title="Warna Teks">
                         </div>
-                        <div class="flex items-center gap-1 border-r border-slate-200 pr-4">
-                            <button id="toolSizeDec" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="minus" class="w-4 h-4"></i></button>
-                            <input type="number" id="toolSize" class="w-12 text-center text-sm font-medium focus:outline-none focus:text-brand-600" title="Ukuran Font">
-                            <button id="toolSizeInc" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-1 border-r border-slate-200 pr-2 lg:pr-4">
+                            <button id="toolSizeDec" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="minus" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
+                            <input type="number" id="toolSize" class="w-10 lg:w-12 text-center text-xs lg:text-sm font-medium focus:outline-none focus:text-brand-600" title="Ukuran Font">
+                            <button id="toolSizeInc" class="p-1 hover:bg-slate-100 rounded text-slate-600"><i data-lucide="plus" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
                         </div>
-                        <div class="flex items-center gap-1 border-r border-slate-200 pr-4">
-                            <button id="toolBold" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Tebal"><i data-lucide="bold" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-1 border-r border-slate-200 pr-2 lg:pr-4">
+                            <button id="toolBold" class="p-1.5 lg:p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Tebal"><i data-lucide="bold" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <button id="toolAlignLeft" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kiri"><i data-lucide="align-left" class="w-4 h-4"></i></button>
-                            <button id="toolAlignCenter" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Tengah"><i data-lucide="align-center" class="w-4 h-4"></i></button>
-                            <button id="toolAlignRight" class="p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kanan"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+                        <div class="flex items-center gap-0.5 lg:gap-1">
+                            <button id="toolAlignLeft" class="p-1.5 lg:p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kiri"><i data-lucide="align-left" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
+                            <button id="toolAlignCenter" class="p-1.5 lg:p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Tengah"><i data-lucide="align-center" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
+                            <button id="toolAlignRight" class="p-1.5 lg:p-2 hover:bg-slate-100 rounded text-slate-600 transition-colors" title="Rata Kanan"><i data-lucide="align-right" class="w-3.5 h-3.5 lg:w-4 lg:h-4"></i></button>
                         </div>
                     </div>
 
                     <!-- Toolbar Foto / Image -->
-                    <div id="photoTools" class="flex items-center gap-4 text-sm px-2 hidden">
-                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
-                            <i data-lucide="sun" class="w-4 h-4 text-slate-500" title="Kecerahan"></i>
-                            <input type="range" id="toolBrightness" min="-1" max="1" step="0.05" value="0" class="w-24 accent-brand-500">
+                    <div id="photoTools" class="flex flex-wrap justify-center items-center gap-3 lg:gap-4 text-xs lg:text-sm px-1 lg:px-2 hidden w-full sm:w-auto">
+                        <div class="flex items-center gap-1.5 lg:gap-2 border-r border-slate-200 pr-2 lg:pr-4">
+                            <i data-lucide="sun" class="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" title="Kecerahan"></i>
+                            <input type="range" id="toolBrightness" min="-1" max="1" step="0.05" value="0" class="w-16 lg:w-24 accent-brand-500">
                         </div>
-                        <div class="flex items-center gap-2 border-r border-slate-200 pr-4">
-                            <i data-lucide="contrast" class="w-4 h-4 text-slate-500" title="Kontras"></i>
-                            <input type="range" id="toolContrast" min="-1" max="1" step="0.05" value="0" class="w-24 accent-brand-500">
+                        <div class="flex items-center gap-1.5 lg:gap-2 border-r border-slate-200 pr-2 lg:pr-4">
+                            <i data-lucide="contrast" class="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" title="Kontras"></i>
+                            <input type="range" id="toolContrast" min="-1" max="1" step="0.05" value="0" class="w-16 lg:w-24 accent-brand-500">
                         </div>
-                        <button id="btnRemoveBg" class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-medium text-xs shadow-sm transition-all" title="Hapus Background Menggunakan AI">
-                            <i data-lucide="wand-2" class="w-3.5 h-3.5"></i> Hapus BG (AI)
+                        <button id="btnRemoveBg" class="flex items-center gap-1 px-2.5 py-1.5 lg:px-3 lg:py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-medium text-[10px] lg:text-xs shadow-sm transition-all" title="Hapus Background Menggunakan AI">
+                            <i data-lucide="wand-2" class="w-3 h-3 lg:w-3.5 lg:h-3.5"></i> Hapus BG
                         </button>
                     </div>
 
                 </div>
 
                 <!-- Empty State -->
-                <div id="canvasEmptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                    <i data-lucide="monitor-stop" class="w-16 h-16 mb-4 text-slate-300"></i>
-                    <p class="text-lg font-medium text-slate-500">Pratinjau ID Card akan muncul di sini</p>
-                    <p class="text-sm mt-1">Mulai dengan mengunggah template di panel sebelah kiri.</p>
+                <div id="canvasEmptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-4 text-center">
+                    <i data-lucide="monitor-stop" class="w-12 h-12 md:w-16 md:h-16 mb-3 md:mb-4 text-slate-300"></i>
+                    <p class="text-base md:text-lg font-medium text-slate-500">Pratinjau ID Card</p>
+                    <p class="text-xs md:text-sm mt-1">Mulai dengan mengunggah template.</p>
                 </div>
 
-                <div id="canvasWrapper" class="hidden pt-14">
+                <!-- PERUBAHAN: Menghapus class hidden dari w-full agar canvas bisa memanjang -->
+                <div id="canvasWrapper" class="hidden pt-20 lg:pt-14 w-full h-full pb-8">
                     <canvas id="previewCanvas"></canvas>
                 </div>
             </div>
 
             <!-- Data Table & Action Area -->
-            <div class="h-64 bg-white flex flex-col shrink-0">
-                <div class="flex justify-between items-center px-6 py-3 border-b border-slate-200 bg-slate-50">
-                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+            <!-- PERUBAHAN: Mengizinkan flex-1 di HP agar tabel mengisi sisa ruang secara proporsional -->
+            <div class="flex-1 lg:flex-none lg:h-72 bg-white flex flex-col shrink-0 border-t border-slate-200 lg:border-t-0 shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] lg:shadow-none z-10 relative">
+                <div class="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center px-4 md:px-6 py-3 border-b border-slate-200 bg-slate-50 shrink-0">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                         <i data-lucide="users" class="w-4 h-4 text-slate-500"></i>
-                        Pratinjau Data <span id="dataCount" class="text-xs font-normal bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full ml-1">0 Data</span>
+                        Data <span id="dataCount" class="text-[10px] md:text-xs font-normal bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full ml-1">0</span>
                     </h3>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                         <div class="text-right hidden md:block">
-                            <p class="text-xs font-semibold text-slate-700">Format Output</p>
-                            <p class="text-[10px] text-slate-500">A4 Landscape • Tumpukan Rapat (Cocok utk Bolak-Balik)</p>
+                            <p class="text-xs font-semibold text-slate-700">Format Output PDF</p>
+                            <p class="text-[10px] text-slate-500">A4 Landscape • Presisi Duplex</p>
                         </div>
-                        <button id="btnGenerate" disabled class="bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-sm">
+                        <button id="btnGenerate" disabled class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2 md:px-5 md:py-2.5 rounded-lg font-medium text-xs md:text-sm flex items-center justify-center gap-2 transition-colors shadow-sm">
                             <i data-lucide="download-cloud" class="w-4 h-4"></i>
                             Generate PDF
                         </button>
                     </div>
                 </div>
-                <div class="flex-1 overflow-auto">
-                    <table class="w-full text-left text-sm text-slate-600">
+                <!-- PERUBAHAN: overflow-x-auto mutlak agar tabel tidak rusak di layar sempit HP -->
+                <div class="flex-1 overflow-auto bg-white">
+                    <table class="w-full text-left text-xs md:text-sm text-slate-600 min-w-[600px]">
                         <thead class="bg-white sticky top-0 border-b border-slate-200 shadow-sm z-10">
                             <tr>
-                                <th class="px-6 py-3 font-semibold text-slate-900 w-16">No</th>
-                                <th class="px-6 py-3 font-semibold text-slate-900">NIK</th>
-                                <th class="px-6 py-3 font-semibold text-slate-900">Nama Karyawan</th>
-                                <th class="px-6 py-3 font-semibold text-slate-900">Departemen</th>
-                                <th class="px-6 py-3 font-semibold text-slate-900">Foto</th>
-                                <th class="px-6 py-3 font-semibold text-slate-900 text-center">Aksi</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900 w-12 md:w-16">No</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900">NIK</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900">Nama Karyawan</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900">Departemen</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900">Foto</th>
+                                <th class="px-4 md:px-6 py-2.5 md:py-3 font-semibold text-slate-900 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="dataTableBody" class="divide-y divide-slate-100">
                             <tr>
-                                <td colspan="6" class="px-6 py-8 text-center text-slate-400 bg-slate-50/50">
+                                <td colspan="6" class="px-6 py-8 text-center text-slate-400 bg-slate-50/50 text-xs md:text-sm">
                                     Belum ada data Excel yang diunggah.
                                 </td>
                             </tr>
@@ -283,57 +333,59 @@
             </div>
             
             <!-- Loading Overlay -->
-            <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
-                <i data-lucide="loader-2" class="w-10 h-10 text-brand-600 animate-spin mb-4"></i>
-                <h3 class="text-lg font-bold text-slate-900 mb-1" id="loadingTitle">Memproses...</h3>
-                <p class="text-sm text-slate-500 text-center max-w-sm" id="loadingText">Mohon tunggu sebentar.</p>
+            <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden p-6">
+                <i data-lucide="loader-2" class="w-8 h-8 md:w-10 md:h-10 text-brand-600 animate-spin mb-3 md:mb-4"></i>
+                <h3 class="text-base md:text-lg font-bold text-slate-900 mb-1" id="loadingTitle">Memproses...</h3>
+                <div class="text-xs md:text-sm text-slate-500 text-center max-w-sm w-full" id="loadingText">Mohon tunggu sebentar.</div>
             </div>
             
         </div>
     </main>
 
-    <!-- Modal Form Login Admin & Dashboard Modal -->
-    <div id="adminAuthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity">
+    <!-- Modal Form Login Admin -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
-            <div class="p-6 text-center border-b border-slate-100">
-                <div class="w-12 h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i data-lucide="lock" class="w-6 h-6"></i>
+            <div class="p-5 md:p-6 text-center border-b border-slate-100">
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-2 md:mb-3">
+                    <i data-lucide="lock" class="w-5 h-5 md:w-6 md:h-6"></i>
                 </div>
-                <h3 class="text-xl font-bold text-slate-900">Otorisasi Admin</h3>
+                <h3 class="text-lg md:text-xl font-bold text-slate-900">Otorisasi Admin</h3>
             </div>
-            <div class="p-6">
-                <input type="password" id="inputAdminPassword" placeholder="Kata sandi..." class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition-all mb-4 text-center tracking-widest font-mono">
-                <p id="errorAdminPass" class="text-xs text-red-500 text-center mb-4 hidden">Kata sandi salah!</p>
-                <div class="flex gap-3">
-                    <button id="btnCancelAdminAuth" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors">Batal</button>
-                    <button id="btnSubmitAdminAuth" class="flex-1 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors">Masuk</button>
+            <div class="p-5 md:p-6">
+                <input type="password" id="inputAdminPassword" placeholder="Kata sandi..." class="w-full px-3 py-2 md:px-4 md:py-3 rounded-lg border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 outline-none transition-all mb-3 md:mb-4 text-center tracking-widest font-mono text-sm md:text-base">
+                <p id="errorAdminPass" class="text-xs text-red-500 text-center mb-3 md:mb-4 hidden">Kata sandi salah!</p>
+                <div class="flex gap-2 md:gap-3">
+                    <button id="btnCancelAdminAuth" class="flex-1 px-3 py-2 md:px-4 md:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors text-xs md:text-sm">Batal</button>
+                    <button id="btnSubmitAdminAuth" class="flex-1 px-3 py-2 md:px-4 md:py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors text-xs md:text-sm">Masuk</button>
                 </div>
             </div>
         </div>
     </div>
-    <div id="adminDashboardModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity">
+
+    <!-- Modal Dashboard Admin -->
+    <div id="adminDashboardModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden transition-opacity p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
-                <div class="flex items-center gap-3">
-                    <div class="bg-brand-600 text-white p-2 rounded-lg">
-                        <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+            <div class="p-4 md:p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2 md:gap-3">
+                    <div class="bg-brand-600 text-white p-1.5 md:p-2 rounded-lg">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 md:w-5 md:h-5"></i>
                     </div>
                     <div>
-                        <h2 class="text-lg font-bold text-slate-800">Dashboard Statistik</h2>
-                        <p class="text-xs text-slate-500" id="adminLastUpdate">Live update</p>
+                        <h2 class="text-base md:text-lg font-bold text-slate-800">Dashboard Statistik</h2>
+                        <p class="text-[10px] md:text-xs text-slate-500" id="adminLastUpdate">Live update</p>
                     </div>
                 </div>
-                <button id="btnCloseAdminDash" class="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button id="btnCloseAdminDash" class="p-1.5 md:p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"><i data-lucide="x" class="w-4 h-4 md:w-5 md:h-5"></i></button>
             </div>
-            <div class="p-8 overflow-y-auto bg-white">
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="bg-brand-50 rounded-2xl p-6 border border-brand-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
-                        <p class="text-sm font-semibold text-brand-700 uppercase tracking-wider mb-2 relative z-10">Total ID Card Di-generate</p>
-                        <p id="statTotalGenerated" class="text-5xl font-extrabold text-brand-900 relative z-10">0</p>
+            <div class="p-4 md:p-8 overflow-y-auto bg-white">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    <div class="bg-brand-50 rounded-2xl p-5 md:p-6 border border-brand-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                        <p class="text-xs md:text-sm font-semibold text-brand-700 uppercase tracking-wider mb-1 md:mb-2 relative z-10">Total ID Card Di-generate</p>
+                        <p id="statTotalGenerated" class="text-4xl md:text-5xl font-extrabold text-brand-900 relative z-10">0</p>
                     </div>
-                    <div class="bg-green-50 rounded-2xl p-6 border border-green-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
-                        <p class="text-sm font-semibold text-green-700 uppercase tracking-wider mb-2 relative z-10">Total Pengguna Aktif</p>
-                        <p id="statTotalUsers" class="text-5xl font-extrabold text-green-900 relative z-10">0</p>
+                    <div class="bg-green-50 rounded-2xl p-5 md:p-6 border border-green-100 flex flex-col justify-center items-center text-center relative overflow-hidden">
+                        <p class="text-xs md:text-sm font-semibold text-green-700 uppercase tracking-wider mb-1 md:mb-2 relative z-10">Total Pengguna Aktif</p>
+                        <p id="statTotalUsers" class="text-4xl md:text-5xl font-extrabold text-green-900 relative z-10">0</p>
                     </div>
                 </div>
             </div>
@@ -377,6 +429,12 @@
                 angle: 0,
                 brightness: 0,
                 contrast: 0
+            },
+            printConfig: {
+                marginLeft: 15,
+                marginTop: 5,
+                cardW: 50,
+                cardH: 80
             }
         };
 
@@ -389,6 +447,7 @@
             canvasEmptyState: document.getElementById('canvasEmptyState'),
             configSection: document.getElementById('configSection'),
             fotoSection: document.getElementById('fotoSection'),
+            printSection: document.getElementById('printSection'), 
             dataTableBody: document.getElementById('dataTableBody'),
             dataCount: document.getElementById('dataCount'),
             btnGenerate: document.getElementById('btnGenerate'),
@@ -413,6 +472,11 @@
             btnRemoveBg: document.getElementById('btnRemoveBg'),
             togglePhoto: document.getElementById('togglePhoto'),
             
+            pdfMarginLeft: document.getElementById('pdfMarginLeft'),
+            pdfMarginTop: document.getElementById('pdfMarginTop'),
+            pdfCardW: document.getElementById('pdfCardW'),
+            pdfCardH: document.getElementById('pdfCardH'),
+
             cloudStatus: document.getElementById('cloudStatus'),
             authContainer: document.getElementById('authContainer'),
             btnLoginGoogle: document.getElementById('btnLoginGoogle'),
@@ -432,7 +496,6 @@
 
         window.fCanvas = null; 
         
-        // ENV AWARENESS (Firebase vs Local Storage)
         let useCloud = false;
         let auth = null, db = null, appId = null;
         let currentUser = null;
@@ -448,16 +511,16 @@
                 useCloud = true;
             }
         } catch (e) {
-            console.log("Berjalan di Mode Standalone / GitHub Pages (Tanpa Cloud DB)");
+            console.log("Mode Standalone / GitHub Pages");
         }
 
         async function initAuth() {
             if (!useCloud) {
                 setCloudStatus('success', 'Mode Lokal Aktif');
                 els.authContainer.innerHTML = `
-                    <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-3 pr-3 py-1.5 border border-slate-200" title="Anda berjalan pada mode penyimpanan lokal browser.">
-                        <i data-lucide="hard-drive" class="w-4 h-4 text-slate-500"></i>
-                        <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Penyimpanan Lokal</span>
+                    <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-2 pr-3 py-1.5 border border-slate-200">
+                        <i data-lucide="hard-drive" class="w-3.5 h-3.5 text-slate-500"></i>
+                        <span class="text-[10px] md:text-xs font-semibold text-slate-700">Lokal</span>
                     </div>`;
                 lucide.createIcons();
                 loadConfig(); 
@@ -480,11 +543,11 @@
                             const photoUrl = user.photoURL || 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
                             const displayName = user.displayName ? user.displayName.split(" ")[0] : 'User';
                             els.authContainer.innerHTML = `
-                                <div class="flex items-center gap-2 bg-slate-100 rounded-full pl-1 pr-3 py-1 border border-slate-200">
-                                    <img src="${photoUrl}" class="w-6 h-6 rounded-full border border-white shadow-sm" alt="Avatar">
-                                    <span class="text-xs font-semibold text-slate-700 hidden sm:inline">Hai, ${displayName}</span>
+                                <div class="flex items-center gap-1.5 md:gap-2 bg-slate-100 rounded-full pl-1 pr-2 md:pr-3 py-1 border border-slate-200">
+                                    <img src="${photoUrl}" class="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white shadow-sm" alt="Avatar">
+                                    <span class="text-[10px] md:text-xs font-semibold text-slate-700 hidden sm:inline">Hai, ${displayName}</span>
                                 </div>
-                                <button id="btnLogout" class="text-xs font-medium text-slate-500 hover:text-red-500 ml-2 transition-colors">Logout</button>
+                                <button id="btnLogout" class="text-[10px] md:text-xs font-medium text-slate-500 hover:text-red-500 ml-1 md:ml-2 transition-colors">Logout</button>
                             `;
                             document.getElementById('btnLogout').addEventListener('click', async () => {
                                 await signOut(auth);
@@ -492,9 +555,9 @@
                             });
                         } else {
                             els.authContainer.innerHTML = `
-                                <button id="btnLoginGoogleRe" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-sm transition-all">
-                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google"> 
-                                    <span class="hidden sm:inline">Login Google</span>
+                                <button id="btnLoginGoogleRe" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 md:px-4 py-1.5 rounded-full text-[10px] md:text-xs font-semibold flex items-center gap-1.5 md:gap-2 shadow-sm transition-all">
+                                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-3 h-3 md:w-4 md:h-4" alt="Google"> 
+                                    <span class="hidden sm:inline">Login</span>
                                 </button>
                             `;
                             document.getElementById('btnLoginGoogleRe').addEventListener('click', async () => {
@@ -511,13 +574,19 @@
         }
 
         function setCloudStatus(type, message) {
-            if(type === 'loading') els.cloudStatus.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 text-brand-500 animate-spin"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
-            else if(type === 'success') els.cloudStatus.innerHTML = `<i data-lucide="cloud-check" class="w-4 h-4 text-green-500"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
-            else if(type === 'error') els.cloudStatus.innerHTML = `<i data-lucide="cloud-off" class="w-4 h-4 text-red-500"></i> <span class="text-xs font-semibold text-slate-600 hidden sm:inline">${message}</span>`;
+            if(type === 'loading') els.cloudStatus.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 md:w-4 md:h-4 text-brand-500 animate-spin"></i> <span class="text-[10px] md:text-xs font-semibold text-slate-600 hidden md:inline">${message}</span>`;
+            else if(type === 'success') els.cloudStatus.innerHTML = `<i data-lucide="cloud-check" class="w-3 h-3 md:w-4 md:h-4 text-green-500"></i> <span class="text-[10px] md:text-xs font-semibold text-slate-600 hidden md:inline">${message}</span>`;
+            else if(type === 'error') els.cloudStatus.innerHTML = `<i data-lucide="cloud-off" class="w-3 h-3 md:w-4 md:h-4 text-red-500"></i> <span class="text-[10px] md:text-xs font-semibold text-slate-600 hidden md:inline">${message}</span>`;
             lucide.createIcons();
         }
 
-        // --- STORAGE ROUTER (LOCAL vs CLOUD) ---
+        function applyPrintConfigToDOM() {
+            els.pdfMarginLeft.value = window.state.printConfig.marginLeft;
+            els.pdfMarginTop.value = window.state.printConfig.marginTop;
+            els.pdfCardW.value = window.state.printConfig.cardW;
+            els.pdfCardH.value = window.state.printConfig.cardH;
+        }
+
         async function loadConfig() {
             const localSaved = localStorage.getItem('tagin_config');
             if (localSaved) {
@@ -525,10 +594,13 @@
                     const data = JSON.parse(localSaved);
                     if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
                     if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
+                    if (data.printConfig) window.state.printConfig = { ...window.state.printConfig, ...data.printConfig };
+                    
                     window.state.cloudConfigLoaded = true;
                     els.togglePhoto.checked = window.state.photoConfig.show;
                     els.toolBrightness.value = window.state.photoConfig.brightness || 0;
                     els.toolContrast.value = window.state.photoConfig.contrast || 0;
+                    applyPrintConfigToDOM();
                     if(window.fCanvas) renderFabricObjects();
                 } catch(e){}
             }
@@ -541,10 +613,13 @@
                         const data = docSnap.data();
                         if (data.fields) window.state.fields = { ...window.state.fields, ...data.fields };
                         if (data.photoConfig) window.state.photoConfig = { ...window.state.photoConfig, ...data.photoConfig };
+                        if (data.printConfig) window.state.printConfig = { ...window.state.printConfig, ...data.printConfig };
+                        
                         window.state.cloudConfigLoaded = true;
                         els.togglePhoto.checked = window.state.photoConfig.show;
                         els.toolBrightness.value = window.state.photoConfig.brightness || 0;
                         els.toolContrast.value = window.state.photoConfig.contrast || 0;
+                        applyPrintConfigToDOM();
                         if(window.fCanvas) renderFabricObjects();
                     }
                 } catch (e) {}
@@ -552,7 +627,12 @@
         }
 
         async function saveConfig() {
-            const configObj = { fields: window.state.fields, photoConfig: window.state.photoConfig, updatedAt: new Date().toISOString() };
+            const configObj = { 
+                fields: window.state.fields, 
+                photoConfig: window.state.photoConfig, 
+                printConfig: window.state.printConfig,
+                updatedAt: new Date().toISOString() 
+            };
             localStorage.setItem('tagin_config', JSON.stringify(configObj));
             
             if (!useCloud) {
@@ -570,7 +650,6 @@
             }
         }
 
-        // --- STATS TRACKER ---
         async function trackGenerationStats(count) {
             if (!useCloud || !currentUser) return;
             try {
@@ -588,10 +667,9 @@
             } catch(e) {}
         }
 
-        // --- Admin Dashboard logic ---
         els.btnOpenAdminAuth.addEventListener('click', () => { 
             if(!useCloud) {
-                alert("Mode Admin Database dinonaktifkan karena Anda sedang menjalankan website di Mode Standalone (Local). Fitur ini membutuhkan koneksi Cloud Server aktif.");
+                alert("Mode Admin dinonaktifkan di Mode Standalone (GitHub Pages).");
                 return;
             }
             els.inputAdminPassword.value = ''; els.errorAdminPass.classList.add('hidden'); els.adminAuthModal.classList.remove('hidden'); 
@@ -616,7 +694,6 @@
         els.btnCloseAdminDash.addEventListener('click', () => { els.adminDashboardModal.classList.add('hidden'); if(unsubscribeAdminStats) unsubscribeAdminStats(); });
 
 
-        // --- Core Application & Fabric ---
         function init() {
             lucide.createIcons();
             initAuth();
@@ -627,6 +704,7 @@
             if (window.fCanvas) window.fCanvas.dispose();
             window.fCanvas = new fabric.Canvas('previewCanvas', { width: window.state.imageWidth, height: window.state.imageHeight, preserveObjectStacking: true, selection: false });
             fabric.Object.prototype.transparentCorners = false; fabric.Object.prototype.cornerColor = '#3b82f6'; fabric.Object.prototype.cornerStyle = 'circle';
+            fabric.Object.prototype.cornerSize = window.innerWidth < 768 ? 16 : 10; // Perbesar handle resizer untuk jari di HP
             
             window.fCanvas.setBackgroundImage(window.state.templateImage.src, window.fCanvas.renderAll.bind(window.fCanvas), { originX: 'left', originY: 'top', width: window.fCanvas.width, height: window.fCanvas.height });
             window.fCanvas.on('object:modified', onObjectModified);
@@ -811,6 +889,15 @@
         });
 
 
+        ['pdfMarginLeft', 'pdfMarginTop', 'pdfCardW', 'pdfCardH'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const key = id.replace('pdf', ''); 
+                const stateKey = key.charAt(0).toLowerCase() + key.slice(1);
+                window.state.printConfig[stateKey] = parseFloat(e.target.value) || 0;
+                saveConfig();
+            });
+        });
+
         function setupEventListeners() {
             els.templateUpload.addEventListener('change', handleTemplateUpload);
             els.excelUpload.addEventListener('change', handleExcelUpload);
@@ -828,6 +915,15 @@
                 img.onload = function() {
                     window.state.templateImage = img;
                     window.state.imageWidth = img.width; window.state.imageHeight = img.height;
+                    
+                    if (img.width > img.height) {
+                        window.state.printConfig.cardW = 80;
+                        window.state.printConfig.cardH = 50;
+                    } else {
+                        window.state.printConfig.cardW = 50;
+                        window.state.printConfig.cardH = 80;
+                    }
+                    applyPrintConfigToDOM();
                     
                     if (!window.state.cloudConfigLoaded) {
                         const w = img.width; const h = img.height;
@@ -857,7 +953,9 @@
                     }
 
                     els.canvasEmptyState.classList.add('hidden'); els.canvasWrapper.classList.remove('hidden');
-                    els.configSection.classList.remove('opacity-50', 'pointer-events-none'); els.fotoSection.classList.remove('opacity-50', 'pointer-events-none');
+                    els.configSection.classList.remove('opacity-50', 'pointer-events-none'); 
+                    els.fotoSection.classList.remove('opacity-50', 'pointer-events-none');
+                    els.printSection.classList.remove('opacity-50', 'pointer-events-none');
                     if(window.state.excelData.length > 0) els.btnGenerate.disabled = false;
                     initFabricCanvas();
                 };
@@ -867,28 +965,28 @@
         }
 
         window.renderTable = function() {
-            if (window.state.excelData.length === 0) { els.dataCount.textContent = '0 Data'; els.dataTableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-slate-400 bg-slate-50/50">Belum ada data Excel yang diunggah.</td></tr>`; els.btnGenerate.disabled = true; return; }
-            els.dataCount.textContent = `${window.state.excelData.length} Data`; els.btnGenerate.disabled = !window.state.templateImage;
+            if (window.state.excelData.length === 0) { els.dataCount.textContent = '0'; els.dataTableBody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400 bg-slate-50/50 text-xs md:text-sm">Belum ada data Excel yang diunggah.</td></tr>`; els.btnGenerate.disabled = true; return; }
+            els.dataCount.textContent = `${window.state.excelData.length}`; els.btnGenerate.disabled = !window.state.templateImage;
 
             let html = ''; const previewData = window.state.excelData.slice(0, 50);
             previewData.forEach((row, index) => {
                 const isActive = index === window.state.currentPreviewIndex;
                 const activeClass = isActive ? 'bg-brand-50 border-l-4 border-brand-500' : 'hover:bg-slate-50 border-l-4 border-transparent';
                 const hasPhoto = !!window.state.photos[row.nik];
-                const photoBadge = hasPhoto ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium flex items-center w-fit gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Ada</span>` : `<span class="bg-red-50 text-red-600 px-2 py-1 rounded text-xs flex items-center w-fit gap-1"><i data-lucide="x-circle" class="w-3 h-3"></i> Kosong</span>`;
+                const photoBadge = hasPhoto ? `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] md:text-xs font-medium flex items-center w-fit gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Ada</span>` : `<span class="bg-red-50 text-red-600 px-2 py-1 rounded text-[10px] md:text-xs flex items-center w-fit gap-1"><i data-lucide="x-circle" class="w-3 h-3"></i> Kosong</span>`;
 
                 html += `
                     <tr class="transition-colors cursor-pointer ${activeClass}" onclick="previewRow(${index})">
-                        <td class="px-6 py-3 whitespace-nowrap text-slate-500">${index + 1}</td>
-                        <td class="px-6 py-3 whitespace-nowrap font-medium text-slate-900">${row.nik || '-'}</td>
-                        <td class="px-6 py-3 whitespace-nowrap">${row.nama || '-'}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-slate-500"><span class="bg-slate-100 px-2 py-1 rounded text-xs">${row.departemen || '-'}</span></td>
-                        <td class="px-6 py-3 whitespace-nowrap">${photoBadge}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-center">${isActive ? '<span class="inline-flex items-center gap-1 text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded-full"><i data-lucide="eye" class="w-3 h-3"></i> Previewing</span>' : '<span class="text-xs text-slate-400 hover:text-brand-600 font-medium">Lihat</span>'}</td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap text-slate-500">${index + 1}</td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap font-medium text-slate-900">${row.nik || '-'}</td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap">${row.nama || '-'}</td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap text-slate-500"><span class="bg-slate-100 px-2 py-1 rounded text-[10px] md:text-xs">${row.departemen || '-'}</span></td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap">${photoBadge}</td>
+                        <td class="px-4 md:px-6 py-2.5 md:py-3 whitespace-nowrap text-center">${isActive ? '<span class="inline-flex items-center gap-1 text-[10px] md:text-xs font-medium text-brand-700 bg-brand-100 px-2 py-1 rounded-full"><i data-lucide="eye" class="w-3 h-3"></i> Preview</span>' : '<span class="text-[10px] md:text-xs text-slate-400 hover:text-brand-600 font-medium">Lihat</span>'}</td>
                     </tr>
                 `;
             });
-            if (window.state.excelData.length > 50) html += `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-brand-600 bg-brand-50/50 italic">... dan ${window.state.excelData.length - 50} data lainnya</td></tr>`;
+            if (window.state.excelData.length > 50) html += `<tr><td colspan="6" class="px-4 py-4 text-center text-[10px] md:text-xs text-brand-600 bg-brand-50/50 italic">... dan ${window.state.excelData.length - 50} data lainnya</td></tr>`;
             els.dataTableBody.innerHTML = html; lucide.createIcons();
         }
 
@@ -905,7 +1003,6 @@
             reader.onload = function(event) {
                 try {
                     const data = new Uint8Array(event.target.result); 
-                    
                     const workbook = XLSX.read(data, {type: 'array', cellDates: true});
                     const rawJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '', raw: false });
                     
@@ -959,9 +1056,9 @@
                         }
 
                         els.loadingText.innerHTML = `
-                            <div class="font-bold text-3xl text-brand-600 mb-1">${percent}%</div>
-                            <div class="text-slate-600 font-medium mb-1">Sukses: ${loadedCount} dari ${totalFiles} foto</div>
-                            <div class="text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
+                            <div class="font-bold text-2xl md:text-3xl text-brand-600 mb-1">${percent}%</div>
+                            <div class="text-xs md:text-sm text-slate-600 font-medium mb-1">Sukses: ${loadedCount} dari ${totalFiles} foto</div>
+                            <div class="text-[10px] md:text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
                         `;
                         resolve();
                     }; 
@@ -988,12 +1085,11 @@
             e.target.value = ''; 
         }
 
-        // --- NEW PDF GENERATION: NO GAPS, PERFECTLY CENTERED ---
         async function generatePDF() {
             if (!window.state.templateImage || window.state.excelData.length === 0) return;
             
             els.loadingTitle.textContent = "Memproses PDF..."; 
-            els.loadingText.innerHTML = `<div class="font-bold text-3xl text-brand-600 mb-1">0%</div><div class="text-slate-600 font-medium mb-1">Menyiapkan Dokumen...</div>`;
+            els.loadingText.innerHTML = `<div class="font-bold text-2xl md:text-3xl text-brand-600 mb-1">0%</div><div class="text-xs md:text-sm text-slate-600 font-medium mb-1">Menyiapkan Dokumen...</div>`;
             els.loadingOverlay.classList.remove('hidden');
             
             const startTime = Date.now();
@@ -1002,24 +1098,15 @@
                 await new Promise(resolve => setTimeout(resolve, 50));
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
-                const isLandscape = window.state.imageWidth > window.state.imageHeight;
                 
-                // Ukuran fisik standar ID Card
-                const cardW = isLandscape ? 80 : 50; 
-                const cardH = isLandscape ? 50 : 80;
+                const cardW = window.state.printConfig.cardW || 50; 
+                const cardH = window.state.printConfig.cardH || 80;
+                const offsetLeft = window.state.printConfig.marginLeft || 15;
+                const offsetTop = window.state.printConfig.marginTop || 5;
                 
-                // Konfigurasi Grid Tumpukan Rapat (Menyerupai Template Kertas Cetak)
-                const cols = isLandscape ? 3 : 5; 
-                const rows = isLandscape ? 4 : 2; 
+                const cols = (cardW < cardH) ? 5 : 3; 
+                const rows = (cardW < cardH) ? 2 : 4; 
                 const cardsPerPage = cols * rows;
-                
-                // LOGIKA BARU: Tumpuk semua kartu menjadi satu blok solid tanpa celah
-                const blockWidth = cols * cardW;
-                const blockHeight = rows * cardH;
-                
-                // Pusatkan seluruh blok tersebut di atas kertas A4 (297x210 mm)
-                const offsetLeft = (297 - blockWidth) / 2;
-                const offsetTop = (210 - blockHeight) / 2;
 
                 const scaleX = cardW / window.state.imageWidth; 
                 const scaleY = cardH / window.state.imageHeight;
@@ -1039,16 +1126,15 @@
                     }
 
                     els.loadingText.innerHTML = `
-                        <div class="font-bold text-3xl text-brand-600 mb-1">${percent}%</div>
-                        <div class="text-slate-600 font-medium mb-1">Mencetak ID Card ${i + 1} dari ${total}</div>
-                        <div class="text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
+                        <div class="font-bold text-2xl md:text-3xl text-brand-600 mb-1">${percent}%</div>
+                        <div class="text-xs md:text-sm text-slate-600 font-medium mb-1">Mencetak ID Card ${i + 1} dari ${total}</div>
+                        <div class="text-[10px] md:text-xs text-slate-400">Estimasi tersisa: ${timeText}</div>
                     `;
 
                     if (i > 0 && i % cardsPerPage === 0) doc.addPage('a4', 'landscape');
                     const col = (i % cardsPerPage) % cols; 
                     const row = Math.floor((i % cardsPerPage) / cols);
 
-                    // Penempatan persis bertumpuk di dalam blok yang sudah ditengahkan
                     const startX = offsetLeft + (col * cardW);
                     const startY = offsetTop + (row * cardH);
 
@@ -1082,10 +1168,8 @@
                         }
                     }
 
-                    // Garis potong
                     doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.rect(startX, startY, cardW, cardH);
 
-                    // Render Teks
                     Object.keys(window.state.fields).forEach(key => {
                         const field = window.state.fields[key]; const text = String(rowData[key] || ''); if (!text) return; 
                         const hexToRgb = (hex) => { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0,0,0]; };
@@ -1098,7 +1182,7 @@
                     if (i % 20 === 0) await new Promise(resolve => setTimeout(resolve, 0));
                 }
 
-                els.loadingText.innerHTML = `<div class="font-bold text-3xl text-brand-600 mb-1">100%</div><div class="text-slate-600 font-medium mb-1">Mengunduh File PDF...</div>`; 
+                els.loadingText.innerHTML = `<div class="font-bold text-2xl md:text-3xl text-brand-600 mb-1">100%</div><div class="text-xs md:text-sm text-slate-600 font-medium mb-1">Mengunduh File PDF...</div>`; 
                 await new Promise(resolve => setTimeout(resolve, 100));
                 doc.save(`TagIn_ID_Cards_A4_${new Date().toISOString().split('T')[0]}.pdf`);
                 await trackGenerationStats(total);
@@ -1110,4 +1194,3 @@
     </script>
 </body>
 </html>
-```
