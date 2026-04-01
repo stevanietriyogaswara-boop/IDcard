@@ -189,7 +189,6 @@
                     <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-200 space-y-3">
                         <p class="text-[10px] md:text-xs font-semibold text-indigo-800 mb-2">Setup Margin Kertas (A4 Landscape):</p>
                         
-                        <!-- GRID MARGIN KOMPREHENSIF 4 ARAH -->
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kiri (mm)</label>
@@ -197,15 +196,15 @@
                             </div>
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Kanan (mm)</label>
-                                <input type="number" id="pdfMarginRight" value="32" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                                <input type="number" id="pdfMarginRight" value="12" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
                             </div>
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atas (mm)</label>
-                                <input type="number" id="pdfMarginTop" value="5" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                                <input type="number" id="pdfMarginTop" value="19" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
                             </div>
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Bawah (mm)</label>
-                                <input type="number" id="pdfMarginBottom" value="45" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                                <input type="number" id="pdfMarginBottom" value="19" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
                             </div>
                         </div>
 
@@ -213,16 +212,16 @@
                         <div class="flex gap-2">
                             <div class="flex-1">
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lebar (W)</label>
-                                <input type="number" id="pdfCardW" value="50" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                                <input type="number" id="pdfCardW" value="54" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
                             </div>
                             <div class="flex-1">
                                 <label class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tinggi (H)</label>
-                                <input type="number" id="pdfCardH" value="80" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
+                                <input type="number" id="pdfCardH" value="86" class="w-full mt-1 border border-slate-300 rounded px-2 py-1 text-xs outline-none focus:border-brand-500 font-medium text-slate-700 bg-white">
                             </div>
                         </div>
 
                         <p class="text-[9px] md:text-[10px] text-indigo-600/80 leading-relaxed font-medium mt-2">
-                            *Margin ini terhubung secara otomatis. Sesuaikan agar persis dengan settingan MS Word Anda untuk cetak dua sisi.
+                            *Setelan mutlak agar presisi 100% dengan bagian belakang saat Print Bolak-Balik (Duplex).
                         </p>
                     </div>
                 </section>
@@ -428,11 +427,11 @@
             },
             printConfig: {
                 marginLeft: 15,
-                marginRight: 32,
-                marginTop: 5,
-                marginBottom: 45,
-                cardW: 50,
-                cardH: 80
+                marginRight: 12,
+                marginTop: 19,
+                marginBottom: 19,
+                cardW: 54,
+                cardH: 86
             }
         };
 
@@ -580,41 +579,14 @@
             lucide.createIcons();
         }
 
-        // --- SISTEM SINKRONISASI KALIBRASI UI ---
         function applyPrintConfigToDOM() {
-            els.pdfMarginLeft.value = window.state.printConfig.marginLeft || 15;
-            els.pdfMarginRight.value = window.state.printConfig.marginRight || 32;
-            els.pdfMarginTop.value = window.state.printConfig.marginTop || 5;
-            els.pdfMarginBottom.value = window.state.printConfig.marginBottom || 45;
-            els.pdfCardW.value = window.state.printConfig.cardW || 50;
-            els.pdfCardH.value = window.state.printConfig.cardH || 80;
+            els.pdfMarginLeft.value = window.state.printConfig.marginLeft ?? 15;
+            els.pdfMarginRight.value = window.state.printConfig.marginRight ?? 12;
+            els.pdfMarginTop.value = window.state.printConfig.marginTop ?? 19;
+            els.pdfMarginBottom.value = window.state.printConfig.marginBottom ?? 19;
+            els.pdfCardW.value = window.state.printConfig.cardW ?? 54;
+            els.pdfCardH.value = window.state.printConfig.cardH ?? 86;
         }
-
-        function syncPrintConfig(source, value) {
-            let cols = 5; let rows = 2; 
-            if (window.state.imageWidth > window.state.imageHeight) { cols = 3; rows = 4; }
-            
-            let pc = window.state.printConfig;
-            pc[source] = parseFloat(value) || 0;
-            
-            // Rumus Auto-Calc: Total (Kiri + Kanan) + Lebar Tabel = Lebar Kertas
-            // Kertas A4 Landscape: Lebar 297mm, Tinggi 210mm
-            if (source === 'marginLeft' || source === 'cardW') {
-                pc.marginRight = parseFloat((297 - pc.marginLeft - (cols * pc.cardW)).toFixed(2));
-            } else if (source === 'marginRight') {
-                pc.marginLeft = parseFloat((297 - pc.marginRight - (cols * pc.cardW)).toFixed(2));
-            }
-            
-            if (source === 'marginTop' || source === 'cardH') {
-                pc.marginBottom = parseFloat((210 - pc.marginTop - (rows * pc.cardH)).toFixed(2));
-            } else if (source === 'marginBottom') {
-                pc.marginTop = parseFloat((210 - pc.marginBottom - (rows * pc.cardH)).toFixed(2));
-            }
-            
-            applyPrintConfigToDOM();
-            saveConfig();
-        }
-
 
         async function loadConfig() {
             const localSaved = localStorage.getItem('tagin_config');
@@ -918,14 +890,15 @@
         });
 
 
-        // --- EVENT LISTENER SINKRONISASI MARGIN ---
         ['pdfMarginLeft', 'pdfMarginRight', 'pdfMarginTop', 'pdfMarginBottom', 'pdfCardW', 'pdfCardH'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.addEventListener('input', (e) => {
                     const key = id.replace('pdf', ''); 
                     const stateKey = key.charAt(0).toLowerCase() + key.slice(1);
-                    syncPrintConfig(stateKey, e.target.value);
+                    const val = parseFloat(e.target.value);
+                    window.state.printConfig[stateKey] = isNaN(val) ? 0 : val;
+                    saveConfig();
                 });
             }
         });
@@ -952,12 +925,13 @@
                         const w = img.width; const h = img.height;
                         
                         if (img.width > img.height) {
-                            window.state.printConfig.cardW = 80;
-                            window.state.printConfig.cardH = 50;
+                            window.state.printConfig.cardW = 86;
+                            window.state.printConfig.cardH = 54;
                         } else {
-                            window.state.printConfig.cardW = 50;
-                            window.state.printConfig.cardH = 80;
+                            window.state.printConfig.cardW = 54;
+                            window.state.printConfig.cardH = 86;
                         }
+                        applyPrintConfigToDOM();
                         
                         window.state.photoConfig.x = w * 0.12; 
                         window.state.photoConfig.y = h * 0.28; 
@@ -980,9 +954,7 @@
                         window.state.fields.nik.x = startX; window.state.fields.nik.y = h * 0.75;
                         window.state.fields.tanggalJoin.x = startX; window.state.fields.tanggalJoin.y = h * 0.80;
                         
-                        // Memastikan margin otomatis tersinkron ketika pertama kali memuat 
-                        syncPrintConfig('cardW', window.state.printConfig.cardW);
-                        syncPrintConfig('cardH', window.state.printConfig.cardH);
+                        saveConfig();
                     }
 
                     els.canvasEmptyState.classList.add('hidden'); els.canvasWrapper.classList.remove('hidden');
@@ -1132,12 +1104,11 @@
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
                 
-                const cardW = window.state.printConfig.cardW || 50; 
-                const cardH = window.state.printConfig.cardH || 80;
+                const cardW = window.state.printConfig.cardW ?? 54; 
+                const cardH = window.state.printConfig.cardH ?? 86;
                 
-                // --- MENGGUNAKAN MARGIN KIRI & ATAS SEBAGAI JANGKAR (ANCHOR) ABSOLUT ---
-                const offsetLeft = window.state.printConfig.marginLeft || 15;
-                const offsetTop = window.state.printConfig.marginTop || 5;
+                const offsetLeft = window.state.printConfig.marginLeft ?? 15;
+                const offsetTop = window.state.printConfig.marginTop ?? 19;
                 
                 const isLandscape = window.state.imageWidth > window.state.imageHeight;
                 const cols = (cardW < cardH) ? 5 : 3; 
