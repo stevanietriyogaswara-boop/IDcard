@@ -1175,7 +1175,8 @@
                         }
                     }
 
-                    doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2); doc.rect(startX, startY, cardW, cardH);
+                    // Garis potong (Diubah menjadi warna hitam RGB: 0,0,0 dengan ketebalan 0.2mm)
+                    doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.2); doc.rect(startX, startY, cardW, cardH);
 
                     Object.keys(window.state.fields).forEach(key => {
                         const field = window.state.fields[key]; const text = String(rowData[key] || ''); if (!text) return; 
